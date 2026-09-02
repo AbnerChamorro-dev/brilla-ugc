@@ -3,6 +3,7 @@
 import { ChangeEvent, CSSProperties, useEffect, useState } from "react";
 import "./crear.css";
 import "./showreel.css";
+import "./world.css";
 
 type Portfolio = {
   name: string; role: string; bio: string; location: string; niches: string[];
@@ -130,6 +131,7 @@ function Theme({ name, note, mode, current, choose }: { name: string; note: stri
 }
 function PortfolioPreview({ data, media, expanded = false }: { data: Portfolio; media: Media[]; expanded?: boolean }) {
   const visible = media.slice(0, 4);
+  if (expanded) return <WorldPortfolio data={data} media={media} />;
   const samples = ["SKINCARE", "TRAVEL", "LIFESTYLE", "BEAUTY"];
   return <div className={(expanded ? "portfolioExperience expanded " : "portfolioExperience ") + "portfolioTheme-" + data.template}>
     <header className="experienceTop">
@@ -157,5 +159,68 @@ function PortfolioPreview({ data, media, expanded = false }: { data: Portfolio; 
       <div className="creatorStamp"><span>{data.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><p><strong>Disponible para crear</strong>{data.instagram}</p></div>
     </div>
     <footer className="experienceBottom"><div><i /> Disponible para proyectos</div><span>DESLIZA PARA EXPLORAR <b>→</b></span><a href={"mailto:" + data.email}>Hablemos <b>↗</b></a></footer>
+  </div>;
+}
+
+
+function WorldPortfolio({ data, media }: { data: Portfolio; media: Media[] }) {
+  const [progress, setProgress] = useState(0);
+  const position = progress * 3;
+  const scene = Math.min(3, Math.round(position));
+  const worldMedia = media.slice(0, 3);
+  const layerStyle = (index: number) => {
+    const distance = index - position;
+    const magnitude = Math.abs(distance);
+    return {
+      opacity: Math.max(0, 1 - magnitude * 1.25),
+      transform: "translate3d(" + (distance * 72) + "%, " + (magnitude * 7) + "%, " + (-magnitude * 420) + "px) scale(" + Math.max(.72, 1 - magnitude * .12) + ")",
+      pointerEvents: magnitude < .45 ? "auto" : "none",
+    } as CSSProperties;
+  };
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const node = event.currentTarget;
+    const available = node.scrollHeight - node.clientHeight;
+    setProgress(available ? node.scrollTop / available : 0);
+  };
+
+  return <div className="worldScroller" onScroll={handleScroll}>
+    <div className="worldSticky" style={{ "--world-progress": progress } as CSSProperties}>
+      <header className="worldNav"><strong>{data.name}<i>•</i></strong><div><span>UGC CREATOR</span><a href={"mailto:" + data.email}>COLABOREMOS ↗</a></div></header>
+      <div className="worldProgress"><span>0{scene + 1}</span><div>{[0, 1, 2, 3].map((item) => <i key={item} className={scene === item ? "active" : ""} />)}</div><span>04</span></div>
+      <main className="worldStage">
+        <section className="worldLayer studioWorld" style={layerStyle(0)}>
+          <div className="worldCopy"><small>01 · BIENVENIDA</small><h1>Entra a mi<br /><em>mundo creativo.</em></h1><p>{data.role}</p><div className="worldTags">{data.niches.map((niche) => <span key={niche}>{niche}</span>)}</div></div>
+          <div className="studioDiorama">
+            <div className="studioPlatform" /><div className="backWall"><i /><i /><i /></div><div className="studioDesk"><span className="laptop">UGC</span><span className="productBottle" /><span className="coffee" /></div><div className="ringLight"><i>{data.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</i></div><div className="studioPlant"><i /><i /><i /></div>
+          </div>
+          <div className="floatingNote noteTop">✦ IDEAS QUE CONECTAN</div><div className="floatingNote noteBottom">{data.location}</div>
+        </section>
+
+        <section className="worldLayer contentWorld" style={layerStyle(1)}>
+          <div className="sceneLabel"><small>02 · SHOWREEL</small><h2>Historias para<br /><em>detener el scroll.</em></h2></div>
+          <div className="contentTunnel">
+            {(worldMedia.length ? worldMedia : [null, null, null]).map((item, index) => <article key={item?.id ?? index} className={(item?.framed || index === 1) ? "worldScreen worldPhone" : "worldScreen"}>
+              {(item?.framed || index === 1) && <i className="worldNotch" />}
+              {item ? item.type === "video" ? <video src={item.url} muted playsInline controls /> : <img src={item.url} alt="Trabajo UGC" /> : <div className={"worldSample sampleWorld" + index}><span>{data.niches[index] || ["BEAUTY", "TRAVEL", "LIFESTYLE"][index]}</span><b>0{index + 1}</b><i>▶</i></div>}
+            </article>)}
+          </div>
+          <div className="worldRibbon">CREATIVE DIRECTION ✦ AUTHENTIC STORIES ✦ SOCIAL FIRST ✦</div>
+        </section>
+
+        <section className="worldLayer serviceWorld" style={layerStyle(2)}>
+          <div className="sceneLabel servicesTitle"><small>03 · LO QUE HAGO</small><h2>Una idea.<br /><em>Muchas formas.</em></h2><p>{data.bio}</p></div>
+          <div className="serviceUniverse"><div className="serviceCore">CREA<br /><span>CONMIGO</span></div>{(data.services.length ? data.services : serviceOptions.slice(0, 5)).slice(0, 6).map((service, index) => <span key={service} className={"servicePlanet planet" + index}>{service}</span>)}</div>
+          <div className="worldStat"><strong>100%</strong><span>contenido<br />hecho con intención</span></div>
+        </section>
+
+        <section className="worldLayer contactWorld" style={layerStyle(3)}>
+          <div className="contactGlow" /><div className="contactPlanet"><span>✦</span></div>
+          <div className="contactMessage"><small>04 · HAGAMOS ALGO INCREÍBLE</small><h2>Tu marca.<br />Mi mirada.<br /><em>Una historia real.</em></h2><a href={"mailto:" + data.email}>HABLEMOS <span>↗</span></a></div>
+          <div className="contactDetails"><span>{data.instagram}</span><span>{data.email}</span><span>{data.location}</span></div>
+        </section>
+      </main>
+      <footer className="worldFooter"><span><i /> DISPONIBLE PARA PROYECTOS</span><div>SCROLL PARA VIAJAR <b>↓</b></div><span>BRILLA WORLD · 2026</span></footer>
+    </div>
+    <div className="worldScrollSpace" aria-hidden="true" />
   </div>;
 }
