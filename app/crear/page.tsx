@@ -2,6 +2,7 @@
 
 import { ChangeEvent, CSSProperties, useEffect, useState } from "react";
 import "./crear.css";
+import "./showreel.css";
 
 type Portfolio = {
   name: string; role: string; bio: string; location: string; niches: string[];
@@ -129,12 +130,32 @@ function Theme({ name, note, mode, current, choose }: { name: string; note: stri
 }
 function PortfolioPreview({ data, media, expanded = false }: { data: Portfolio; media: Media[]; expanded?: boolean }) {
   const visible = media.slice(0, 4);
-  return <div className={(expanded ? "portfolioPreview expanded " : "portfolioPreview ") + "portfolioTheme-" + data.template}>
-    <div className="portfolioNav"><strong>{data.name || "Tu nombre"}</strong><span>WORK · ABOUT · CONTACT</span></div>
-    <div className="portfolioHero"><p>UGC CREATOR · {data.location || "TU CIUDAD"}</p><h2>{data.role || "Historias que se sienten reales."}</h2><div className="previewTags">{data.niches.map((niche) => <span key={niche}>{niche}</span>)}</div></div>
-    <div className="previewAbout"><span>ABOUT ME</span><p>{data.bio}</p></div>
-    <div className="previewWorks">{visible.length ? visible.map((item) => <div key={item.id} className={item.framed && item.type === "video" ? "workCard deviceWork" : "workCard"}>{item.framed && item.type === "video" && <i />}{item.type === "video" ? <video src={item.url} muted playsInline /> : <img src={item.url} alt="Trabajo UGC" />}</div>) : <><div className="workCard sampleWork sampleOne"><span>SKINCARE</span></div><div className="workCard deviceWork sampleWork sampleTwo"><i /><span>TRAVEL</span></div><div className="workCard sampleWork sampleThree"><span>LIFESTYLE</span></div></>}</div>
-    <div className="previewContact"><div><span>LET&apos;S CREATE</span><strong>¿Creamos algo<br />increíble juntos?</strong></div><a href={"mailto:" + data.email}>Hablemos ↗</a></div>
-    <footer><span>{data.instagram}</span><b>BRILLA PORTFOLIO</b></footer>
+  const samples = ["SKINCARE", "TRAVEL", "LIFESTYLE", "BEAUTY"];
+  return <div className={(expanded ? "portfolioExperience expanded " : "portfolioExperience ") + "portfolioTheme-" + data.template}>
+    <header className="experienceTop">
+      <strong>{data.name || "Tu nombre"}<i>•</i></strong>
+      <nav><span>Selected work</span><span>About</span><a href={"mailto:" + data.email}>Let&apos;s talk ↗</a></nav>
+    </header>
+    <div className="experienceCanvas">
+      <section className="experienceCopy">
+        <p className="experienceOverline">UGC CREATOR · {data.location || "TU CIUDAD"}</p>
+        <h2><span>Ideas</span><em>que se sienten</em><b>reales.</b></h2>
+        <p className="experienceBio">{data.role || data.bio}</p>
+        <div className="experienceTags">{data.niches.map((niche) => <span key={niche}>{niche}</span>)}</div>
+      </section>
+      <section className="showreel" aria-label="Showreel de trabajos. Desliza horizontalmente para explorar.">
+        <div className="reelTrack">
+          {visible.length ? visible.map((item, index) => <article key={item.id} className={item.framed && item.type === "video" ? "reelCard phoneReel" : "reelCard"}>
+            <div className="reelNumber">0{index + 1}</div>{item.framed && item.type === "video" && <i className="reelNotch" />}
+            {item.type === "video" ? <video src={item.url} muted playsInline controls={expanded} /> : <img src={item.url} alt="Trabajo UGC" />}
+            <div className="reelCaption"><span>{data.niches[index % Math.max(data.niches.length, 1)] || "UGC"}</span><b>Ver proyecto ↗</b></div>
+          </article>) : samples.map((sample, index) => <article key={sample} className={index === 1 ? "reelCard phoneReel sampleReel sampleReel" + index : "reelCard sampleReel sampleReel" + index}>
+            <div className="reelNumber">0{index + 1}</div>{index === 1 && <i className="reelNotch" />}<span className="sampleOrb" /><div className="sampleTitle">{sample}<small>{index % 2 ? "content diary" : "brand story"}</small></div><span className="reelPlay">▶</span><div className="reelCaption"><span>{sample}</span><b>Ver proyecto ↗</b></div>
+          </article>)}
+        </div>
+      </section>
+      <div className="creatorStamp"><span>{data.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><p><strong>Disponible para crear</strong>{data.instagram}</p></div>
+    </div>
+    <footer className="experienceBottom"><div><i /> Disponible para proyectos</div><span>DESLIZA PARA EXPLORAR <b>→</b></span><a href={"mailto:" + data.email}>Hablemos <b>↗</b></a></footer>
   </div>;
 }
