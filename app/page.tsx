@@ -37,7 +37,7 @@ export default function Home() {
           <a href="#portafolios">Ejemplos</a>
           <a href="#precios">Precios</a>
         </div>
-        <a className="navCta" href="#probar">Crear mi portafolio</a>
+        <a className="navCta" href="/crear">Crear mi portafolio</a>
       </nav>
 
       <section className="hero shell" id="inicio">
@@ -46,7 +46,7 @@ export default function Home() {
           <h1>Tu portafolio UGC.<br /><em>Imposible de ignorar.</em></h1>
           <p className="heroText">Crea una página que se sienta tan auténtica como tu contenido. Sin diseñar, sin complicarte y lista para compartir con tus marcas favoritas.</p>
           <div className="heroActions">
-            <a className="primaryButton" href="#probar">Crear gratis <span>↗</span></a>
+            <a className="primaryButton" href="/crear">Crear gratis <span>↗</span></a>
             <a className="textButton" href="#como-funciona"><span className="play">▶</span> Ver cómo funciona</a>
           </div>
           <div className="socialProof">
@@ -124,14 +124,14 @@ export default function Home() {
       <section className="pricing shell" id="precios">
         <div className="pricingCopy"><span className="kicker">Empieza sin riesgo</span><h2>Tu primer portafolio,<br /><em>gratis.</em></h2><p>Crece a Pro cuando necesites más personalización y herramientas para cerrar colaboraciones.</p></div>
         <div className="priceCards">
-          <article className="priceCard"><span className="plan">ESENCIAL</span><div className="price"><strong>$0</strong><span>para siempre</span></div><ul><li>✓ 1 portafolio publicado</li><li>✓ 6 videos y 10 fotos</li><li>✓ 3 plantillas esenciales</li><li>✓ Enlace personal Brilla</li></ul><a href="#probar">Empezar gratis</a></article>
-          <article className="priceCard featured"><span className="popular">MÁS POPULAR</span><span className="plan">PRO</span><div className="price"><strong>$9</strong><span>USD / mes</span></div><ul><li>✓ Contenido ilimitado</li><li>✓ Todas las plantillas</li><li>✓ Dominio personalizado</li><li>✓ Estadísticas de visitas</li><li>✓ Sin marca de Brilla</li></ul><a href="#probar">Probar Pro gratis <span>↗</span></a></article>
+          <article className="priceCard"><span className="plan">ESENCIAL</span><div className="price"><strong>$0</strong><span>para siempre</span></div><ul><li>✓ 1 portafolio publicado</li><li>✓ 6 videos y 10 fotos</li><li>✓ 3 plantillas esenciales</li><li>✓ Enlace personal Brilla</li></ul><a href="/crear">Empezar gratis</a></article>
+          <article className="priceCard featured"><span className="popular">MÁS POPULAR</span><span className="plan">PRO</span><div className="price"><strong>$9</strong><span>USD / mes</span></div><ul><li>✓ Contenido ilimitado</li><li>✓ Todas las plantillas</li><li>✓ Dominio personalizado</li><li>✓ Estadísticas de visitas</li><li>✓ Sin marca de Brilla</li></ul><a href="/crear">Probar Pro gratis <span>↗</span></a></article>
         </div>
       </section>
 
       <section className="faq shell"><div><span className="kicker">Preguntas frecuentes</span><h2>Lo que necesitas<br /><em>saber.</em></h2></div><div className="faqList">{faqs.map(([question, answer], index) => <article className={openFaq === index ? "open" : ""} key={question}><button onClick={() => setOpenFaq(openFaq === index ? -1 : index)} aria-expanded={openFaq === index}><span>{question}</span><b>{openFaq === index ? "−" : "+"}</b></button>{openFaq === index && <p>{answer}</p>}</article>)}</div></section>
 
-      <section className="finalCta shell"><span className="ctaSpark">✦</span><p>NO ESPERES A SENTIRTE LISTA</p><h2>Tu próxima colaboración<br />empieza con un <em>link.</em></h2><a className="primaryButton lightButton" href="#probar">Crear mi portafolio <span>↗</span></a></section>
+      <section className="finalCta shell"><span className="ctaSpark">✦</span><p>NO ESPERES A SENTIRTE LISTA</p><h2>Tu próxima colaboración<br />empieza con un <em>link.</em></h2><a className="primaryButton lightButton" href="/crear">Crear mi portafolio <span>↗</span></a></section>
 
       <footer className="footer shell"><a className="brand" href="#inicio">brilla<span>•</span></a><p>Portafolios que hacen brillar tu talento.</p><div><a href="#como-funciona">Cómo funciona</a><a href="#precios">Precios</a><a href="#portafolios">Plantillas</a></div><small>© 2026 Brilla UGC</small></footer>
     </main>
