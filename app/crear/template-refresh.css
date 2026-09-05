@@ -1,0 +1,351 @@
+/* 2026 template refresh: playful, professional, and intentionally distinct. */
+.portfolioDeck{--motion-spring:cubic-bezier(.16,1,.3,1);--motion-snap:cubic-bezier(.7,0,.2,1)}
+.deckControls button{transition:transform .22s ease,background .22s ease,color .22s ease}
+.deckControls>button:hover:not(:disabled){transform:translateY(-.18cqw) scale(1.06)}
+
+/* Gallery — airy fashion editorial. */
+.deck-gallery{--paper:#fff9ef;--ink:#18233f;--muted:#6d6a66;--panel:#f3dfd0}
+.deck-gallery .deckSlide{background:linear-gradient(112deg,#fff9ef 0 67%,#f7e2d2 67% 100%)}
+.deck-gallery .deckSlide:before{content:"BRILLA / EDIT 01";position:absolute;right:2.5cqw;top:2.2cqw;font:800 .55cqw var(--font-sans);letter-spacing:.2em;color:#e45e48}
+.deck-gallery .deckSlide:after{inset:2cqw;border-color:#18233f26;opacity:1}
+.deck-gallery .intro>.deckMedia{border-radius:18cqw 18cqw 1.2cqw 1.2cqw;box-shadow:1.2cqw 1.2cqw 0 #f1a88f}
+.deck-gallery .slideTitle i{color:#e45e48}
+.deck-gallery .galleryRow .deckMedia{border-radius:.35cqw}
+.deck-gallery .deckSlide>*{transform:translateY(2.5cqw);transition-duration:.8s;transition-timing-function:var(--motion-spring)}
+.deck-gallery .deckSlide.isActive>*{transform:none}
+
+/* Studio Luv — cinematic berry with a curtain wipe. */
+.deck-studio{--paper:#54183f;--ink:#fff7f2;--muted:#f8cbd9;--panel:#7a2558}
+.deck-studio .deckSlide{background:radial-gradient(circle at 84% 18%,#b64a7b 0 12%,transparent 34%),linear-gradient(135deg,#671b49,#35142f)}
+.deck-studio .deckSlide:nth-child(even){background:linear-gradient(120deg,#ffd8df,#f3a8bc);color:#501532}
+.deck-studio .introCopy{background:linear-gradient(90deg,#54183ff5 70%,transparent)}
+.deck-studio .intro>.deckMedia{filter:saturate(.85) contrast(1.05)}
+.deck-studio .galleryRow .deckMedia,.deck-studio .photoMosaic .deckMedia{border-radius:10cqw 10cqw 1cqw 1cqw}
+.deck-studio .deckSlide>*{clip-path:inset(0 100% 0 0);transform:translateX(-2cqw);transition:clip-path .85s var(--motion-snap),transform .85s var(--motion-spring),opacity .35s ease}
+.deck-studio .deckSlide.isActive>*{clip-path:inset(0);transform:none}
+.deck-studio .rateVisual{background:radial-gradient(circle at 32% 28%,#ffc2d0,#b94c7b 45%,#35142f 100%)}
+
+/* Scrapbook — tactile coral collage. */
+.deck-scrapbook{--paper:#fff2cf;--ink:#40294a;--muted:#765f79;--panel:#ffb8aa}
+.deck-scrapbook .deckSlide{background-color:#fff2cf;background-image:linear-gradient(#4f365410 1px,transparent 1px),linear-gradient(90deg,#4f365410 1px,transparent 1px);background-size:2.15cqw 2.15cqw}
+.deck-scrapbook .deckSlide:before{content:"✦  MADE WITH GOOD IDEAS  ✦";position:absolute;left:-4cqw;top:4cqw;padding:.7cqw 5cqw;color:#fff;background:#ed6a5a;font:800 .58cqw var(--font-sans);letter-spacing:.14em;transform:rotate(-7deg)}
+.deck-scrapbook .deckMedia{padding:.65cqw;border:.12cqw solid #fff;background:#fff;box-shadow:.8cqw .9cqw 0 #51304c22}
+.deck-scrapbook .deckMedia:after{content:"";position:absolute;z-index:5;left:35%;top:-.4cqw;width:30%;height:1.1cqw;background:#8ad8c8aa;transform:rotate(-2deg)}
+.deck-scrapbook .deckSlide>*{transform:translateY(3cqw) rotate(-1.5deg) scale(.97);transition-duration:.72s;transition-timing-function:var(--motion-spring)}
+.deck-scrapbook .deckSlide.isActive>*{transform:none}
+.deck-scrapbook .slideTitle i{color:#ed6a5a}
+
+/* Art Director — sharp, high-contrast brutalist pop. */
+.deck-art{--paper:#11131a;--ink:#f6f051;--muted:#e6e3d2;--panel:#292d39}
+.deck-art .deckSlide{background:linear-gradient(90deg,transparent 0 74%,#ff5c7c 74% 76%,transparent 76%),#11131a}
+.deck-art .deckSlide:nth-child(even){color:#11131a;background:#f5f1e5}
+.deck-art .deckSlide:before{content:"ART / DIRECTION";position:absolute;right:2.4cqw;bottom:2cqw;padding:.55cqw .75cqw;color:#11131a;background:#f6f051;font:900 .6cqw Arial,sans-serif;letter-spacing:.08em}
+.deck-art .deckMedia{border:.35cqw solid currentColor;border-radius:0;box-shadow:.8cqw .8cqw 0 #ff5c7c}
+.deck-art .deckSlide>*{transform:translateX(-5cqw) skewX(-5deg);transition:opacity .22s linear,transform .36s steps(5,end)}
+.deck-art .deckSlide.isActive>*{transform:none}
+.deck-art .rateVisual{border-radius:0;background:linear-gradient(135deg,#f6f051 0 48%,#ff5c7c 48%);color:#11131a}
+
+/* Blue OS — precise digital interface with a scanning pulse. */
+.deck-blue{--paper:#4057de;--ink:#f8fbff;--muted:#d4dcff;--panel:#2237ae}
+.deck-blue .deckSlide{background-color:#4057de;background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:3cqw 3cqw}
+.deck-blue .deckSlide:nth-child(odd){color:#263aab;background-color:#f1f4ff;background-image:linear-gradient(#4057de0d 1px,transparent 1px),linear-gradient(90deg,#4057de0d 1px,transparent 1px)}
+.deck-blue .deckSlide:before{content:"●  SYSTEM ONLINE";position:absolute;left:2cqw;bottom:1.8cqw;font:700 .56cqw ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;color:#45f1c1}
+.deck-blue .deckMedia{border:.18cqw solid currentColor;border-radius:1.1cqw;box-shadow:.65cqw .65cqw 0 #45f1c1}
+.deck-blue .deckSlide>*{filter:blur(.8cqw);transform:translateY(2cqw) scale(.98);transition:filter .6s ease,opacity .35s ease,transform .7s var(--motion-spring)}
+.deck-blue .deckSlide.isActive>*{filter:none;transform:none}
+.deck-blue .rateVisual{background:radial-gradient(circle,#45f1c1 0 8%,transparent 9%),linear-gradient(145deg,#2438ad,#111c65)}
+
+/* Whimsy — polished candy pop with a buoyant entrance. */
+.deck-whimsy{--paper:#ffcad8;--ink:#4a1b54;--muted:#7a486e;--panel:#fff0f5}
+.deck-whimsy .deckSlide{background:radial-gradient(circle at 88% 18%,#ff8c78 0 8%,transparent 8.3%),radial-gradient(circle at 7% 83%,#9184ff 0 12%,transparent 12.3%),#ffcad8}
+.deck-whimsy .deckSlide:before{content:"♡";position:absolute;right:4cqw;top:3.5cqw;color:#fff;font:400 6cqw Georgia,serif;transform:rotate(14deg)}
+.deck-whimsy .deckMedia{border:.55cqw solid #fff;border-radius:45% 45% 2cqw 2cqw;box-shadow:.8cqw 1cqw 0 #9184ff66}
+.deck-whimsy .deckSlide>*{transform:translateY(5cqw) scale(.9) rotate(2deg);transition-duration:.82s;transition-timing-function:cubic-bezier(.18,1.4,.35,1)}
+.deck-whimsy .deckSlide.isActive>*{transform:none}
+.deck-whimsy .slideTitle i{color:#ff6d67}
+.deck-whimsy .rateVisual{background:radial-gradient(circle at 35% 30%,#fff3a8,#ff7b85 45%,#7a5ce2 100%)}
+
+/* Sage Journal — organic, quiet and premium. */
+.deck-sage{--paper:#edf3df;--ink:#244638;--muted:#68796c;--panel:#ccddbf}
+.deck-sage .deckSlide{background:radial-gradient(ellipse at 90% 105%,#b8d8b2 0 24%,transparent 24.4%),radial-gradient(ellipse at -8% -12%,#ffe0a8 0 22%,transparent 22.4%),#edf3df}
+.deck-sage .deckSlide:before{content:"";position:absolute;right:3cqw;top:3cqw;width:9cqw;height:16cqw;border:.12cqw solid #517660;border-radius:100% 0 100% 0;opacity:.35;transform:rotate(24deg)}
+.deck-sage .deckMedia{border-radius:9cqw 9cqw .6cqw .6cqw;box-shadow:1cqw 1.3cqw 0 #8aae8b42}
+.deck-sage .deckSlide>*{transform:translateY(1.5cqw) scale(.985);transition-duration:1.05s;transition-timing-function:cubic-bezier(.2,.7,.2,1)}
+.deck-sage .deckSlide.isActive>*{transform:none}
+.deck-sage .rateVisual{background:radial-gradient(circle at 35% 30%,#fff4bd,#89a987 52%,#244638 100%)}
+
+/* Presentation selector cards mirror the actual visual personalities. */
+.themePreview.gallery{color:#18233f;background:linear-gradient(110deg,#fff9ef 0 68%,#f1a88f 68%)}
+.themePreview.gallery u{border-radius:50% 50% 4px 4px;background:linear-gradient(150deg,#f6c6af,#243150)}
+.themePreview.studio u{inset:0 0 0 auto;width:47%;height:100%;background:linear-gradient(145deg,#eaa0b8,#4b1637)}
+.themePreview.scrapbook{background-color:#fff2cf;background-image:linear-gradient(#4f365412 1px,transparent 1px),linear-gradient(90deg,#4f365412 1px,transparent 1px);background-size:12px 12px}
+.themePreview.scrapbook u{transform:rotate(5deg);border:4px solid #fff;background:linear-gradient(145deg,#ff8d76,#5b3659);box-shadow:4px 4px 0 #4f365433}
+.themePreview.art u{top:13px;height:48%;border:3px solid #f6f051;background:#ff5c7c;box-shadow:4px 4px 0 #f6f051}
+.themePreview.blue{background-image:linear-gradient(#ffffff14 1px,transparent 1px),linear-gradient(90deg,#ffffff14 1px,transparent 1px);background-size:12px 12px}
+.themePreview.blue u{border:2px solid #fff;background:linear-gradient(145deg,#5c7cff,#1c2e96);box-shadow:4px 4px 0 #45f1c1}
+.themePreview.whimsy{background:radial-gradient(circle at 82% 20%,#ff826e 0 10%,transparent 11%),#ffc6d7}
+.themePreview.whimsy u{border:4px solid #fff;border-radius:50% 50% 7px 7px;background:linear-gradient(145deg,#fff2a9,#846cff)}
+.themePreview.sage{background:radial-gradient(circle at 2% 100%,#ffd99b 0 24%,transparent 25%),#e5efda}
+.themePreview.sage u{border-radius:50% 50% 5px 5px;background:linear-gradient(145deg,#afc9a6,#365747)}
+
+/* Shared website interaction polish. */
+.websitePortfolio{--web-radius:1.2cqw;--web-shadow:0 2cqw 5cqw #231b3214}
+.siteNav a{position:relative}
+.siteNav nav>a:not(.navContact):after{content:"";position:absolute;left:0;right:100%;bottom:-.4cqw;height:.12cqw;background:var(--site-accent);transition:right .3s ease}
+.siteNav nav>a:hover:after{right:0}
+.heroActions a,.webContact>a{transition:transform .28s ease,box-shadow .28s ease}
+.heroActions a:hover,.webContact>a:hover{transform:translateY(-.35cqw);box-shadow:0 1.2cqw 2.4cqw color-mix(in srgb,var(--site-accent),transparent 68%)}
+
+/* Muse Editorial — warm magazine composition and elegant page turns. */
+.website-muse{--web-paper:#fff9ef;--web-ink:#202b46;--web-soft:#f2dfd1;--web-card:#fffdf8}
+.website-muse .siteNav{border-bottom-color:#202b4624}
+.website-muse .siteNav strong{font-family:var(--font-serif);font-weight:650}
+.website-muse .siteHero{grid-template-columns:1.18fr .72fr;background:linear-gradient(110deg,#fff9ef 0 72%,#f3c1aa 72%)}
+.website-muse .siteHero:before{width:25cqw;height:25cqw;left:-9cqw;top:7cqw;border-color:#df684f55}
+.website-muse .siteHero:after{content:"ISSUE 01 / CREATOR STORIES";position:absolute;left:5.5cqw;bottom:2.5cqw;font:800 .58cqw var(--font-sans);letter-spacing:.2em;color:#d75e49}
+.website-muse .siteHero>.deckMedia{border-radius:20cqw 20cqw .8cqw .8cqw;box-shadow:1.2cqw 1.2cqw 0 #d75e49}
+.website-muse .heroMark{right:auto;left:48cqw;color:#202b460a;font-family:var(--font-serif)}
+.website-muse .webProof{background:#202b46;color:#fff}
+.website-muse .webProof span{border-color:#ffffff24}
+.website-muse .webProof b{color:#f7c3ae}
+.website-muse .siteWork{background:#f2dfd1}
+.website-muse .webProjectGroup:nth-child(even) .deckMedia:nth-child(odd){transform:translateY(1.4cqw)}
+.website-muse .webProjectGroup .deckMedia{border-radius:.35cqw}
+.website-muse .serviceCards article{border-radius:.25cqw;border-top:.35cqw solid #d75e49}
+.website-muse .webContact{background:#202b46}
+.website-muse .webContact h2{color:#fff9ef}
+.website-muse .webContact>a{color:#202b46;background:#f7c3ae}
+
+/* Creator Studio — nocturnal digital grid and crisp modular rhythm. */
+.website-creator{--web-paper:#edf3ff;--web-ink:#15213f;--web-soft:#dbe7ff;--web-card:#f8fbff}
+.website-creator .siteNav{color:#f7f9ff;background:#101a35ed;border-bottom-color:#7e94ff33}
+.website-creator .siteNav .navContact{color:#101a35;background:#61efc4;border-color:#61efc4}
+.website-creator .siteHero{grid-template-columns:.85fr 1.15fr;color:#f7f9ff;background-color:#101a35;background-image:linear-gradient(#ffffff0c 1px,transparent 1px),linear-gradient(90deg,#ffffff0c 1px,transparent 1px);background-size:4cqw 4cqw}
+.website-creator .siteHero:before{content:"SYSTEM / CREATIVE MODE";position:absolute;left:5.5cqw;bottom:2.4cqw;color:#61efc4;font:700 .58cqw ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em}
+.website-creator .siteHero>.deckMedia{order:-1;border:.16cqw solid #7892ff;border-radius:.7cqw;box-shadow:1.2cqw 1.2cqw 0 #61efc4}
+.website-creator .heroMark{color:#61efc40c}
+.website-creator .heroActions a{color:#101a35;background:#61efc4}
+.website-creator .webProof{gap:1px;padding:1px;background:#7892ff}
+.website-creator .webProof span{border:0;background:#101a35;color:#f7f9ff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.website-creator .webProof b{color:#61efc4;font-family:var(--font-sans)}
+.website-creator .webAbout,.website-creator .webServices{background:#f8fbff}
+.website-creator .siteWork{background:#dbe7ff}
+.website-creator .webProjectGroup .deckMedia{border:.14cqw solid #5d76db;border-radius:.7cqw;box-shadow:.55cqw .55cqw 0 #61efc4}
+.website-creator .serviceCards{gap:.35cqw}
+.website-creator .serviceCards article{border-radius:.4cqw;border-color:#9cafef;background:#edf3ff}
+.website-creator .serviceCards article:hover{transform:translate(-.25cqw,-.4cqw);box-shadow:.5cqw .5cqw 0 #61efc4}
+.website-creator .webAudienceCard{border:.14cqw solid #7892ff;border-radius:.55cqw;background:#101a35}
+.website-creator .webContact{background:#586fe0}
+.website-creator .webContact>a{color:#101a35;background:#61efc4}
+
+/* Aura Grid — romantic pop, soft geometry and buoyant details. */
+.website-aura{--web-paper:#fff7f5;--web-ink:#542044;--web-soft:#f8dce4;--web-card:#fffdfb}
+.website-aura .siteNav{background:#fff7f5df}
+.website-aura .siteNav .navContact{color:#fff;background:#8c68e8;border-color:#8c68e8}
+.website-aura .siteHero{grid-template-columns:1fr 1fr;text-align:center;background:radial-gradient(circle at 12% 22%,#ffbd9c 0 8%,transparent 8.2%),radial-gradient(circle at 90% 12%,#b9a5ff 0 9%,transparent 9.2%),#fff7f5}
+.website-aura .siteHero>div:first-child{display:flex;flex-direction:column;align-items:center}
+.website-aura .siteHero h1{font-style:italic}
+.website-aura .siteHero>.deckMedia{height:39cqw;border:.65cqw solid #fff;border-radius:50%;box-shadow:1.2cqw 1.4cqw 0 #8c68e866;animation:auraFloat 5s ease-in-out infinite}
+.website-aura .heroMark{right:auto;left:2cqw;color:#ff7b7510;transform:rotate(-8deg)}
+.website-aura .heroActions a{background:#8c68e8}
+.website-aura .webProof{margin:0 3cqw;border:0;border-radius:4cqw;background:#ffb3c7;overflow:hidden}
+.website-aura .webProof span{border-color:#ffffff88}
+.website-aura .webProof b{color:#542044}
+.website-aura .webAbout{margin:4cqw;border-radius:5cqw;background:#fff}
+.website-aura .siteWork{border-radius:7cqw 7cqw 0 0;background:#f8dce4}
+.website-aura .webProjectGroup .deckMedia{border:.55cqw solid #fff;border-radius:2.5cqw;box-shadow:.8cqw .9cqw 0 #8c68e844}
+.website-aura .webProjectGroup .deckMedia:nth-child(even){transform:translateY(1.4cqw) rotate(1.5deg)}
+.website-aura .serviceCards article{border:0;border-radius:3cqw;background:#fff0f4;box-shadow:0 1.2cqw 2.4cqw #6c315014}
+.website-aura .serviceCards article:nth-child(3n+2){background:#eee9ff}
+.website-aura .serviceCards article:nth-child(3n+3){background:#fff0cb}
+.website-aura .webAudienceCard{border-radius:45% 45% 2cqw 2cqw;background:linear-gradient(145deg,#8c68e8,#542044)}
+.website-aura .webContact{background:linear-gradient(135deg,#ff806f,#8c68e8)}
+.website-aura .webContact>a{color:#542044;background:#fff0cb}
+
+/* Noir Atelier — cinematic black, apricot accents and hard-edged reveals. */
+.website-noir{--web-paper:#121317;--web-ink:#f7f0e8;--web-soft:#1d2027;--web-card:#17191e}
+.website-noir .siteNav{border-bottom-color:#ffffff22;background:#121317ed}
+.website-noir .siteNav strong{font-family:var(--font-sans);font-weight:900;text-transform:uppercase}
+.website-noir .siteNav .navContact{color:#121317;background:#ff9a72;border-color:#ff9a72}
+.website-noir .siteHero{grid-template-columns:1fr .72fr;min-height:58cqw;background:linear-gradient(90deg,#121317 0 69%,#ff9a72 69%)}
+.website-noir .siteHero h1{max-width:66cqw;font-family:Arial Black,var(--font-sans);font-size:5.7cqw;line-height:.88;text-transform:uppercase}
+.website-noir .siteHero p,.website-noir .heroActions span{color:#c9c4be}
+.website-noir .siteHero>.deckMedia{border:.12cqw solid #ff9a72;border-radius:0;box-shadow:-1cqw 1cqw 0 #f6ebdf}
+.website-noir .heroMark{right:auto;left:2.2cqw;color:#ffffff09}
+.website-noir .heroActions a{color:#121317;background:#ff9a72;border-radius:0}
+.website-noir .webProof{color:#121317;background:#ff9a72;border:0}
+.website-noir .webProof span{border-color:#12131733}
+.website-noir .webProof b{font-family:Arial Black,var(--font-sans)}
+.website-noir .webAbout,.website-noir .webServices,.website-noir .webBrands{background:#17191e}
+.website-noir .siteWork{background:#1d2027}
+.website-noir .webProjectGroup .deckMedia{border-radius:0;filter:saturate(.65);box-shadow:.7cqw .7cqw 0 #ff9a72}
+.website-noir .webProjectGroup .deckMedia:hover{filter:saturate(1.05);transform:translate(-.3cqw,-.45cqw)}
+.website-noir .serviceCards article,.website-noir .webBrands article{border-radius:0;background:#20232a}
+.website-noir .serviceCards article:hover{color:#121317;background:#ff9a72}
+.website-noir .webAudienceCard{border:.12cqw solid #ff9a72;border-radius:0;background:#0b0c0f}
+.website-noir .webContact{color:#121317;background:#ff9a72}
+.website-noir .webContact>a{color:#fff;background:#121317;border-radius:0}
+
+/* Sorbet Studio — peach, butter and lilac editorial blocks. */
+.website-sorbet{--web-paper:#fff8f2;--web-ink:#3f2947;--web-soft:#ffe0d5;--web-card:#fffdf8}
+.website-sorbet .siteNav{background:#fff8f2e8;border-bottom-color:#68445f20}
+.website-sorbet .siteNav .navContact{color:#3f2947;background:#ffe08a;border-color:#ffe08a}
+.website-sorbet .siteHero{grid-template-columns:1.08fr .92fr;background:radial-gradient(circle at 8% 16%,#ffd98f 0 7%,transparent 7.2%),linear-gradient(125deg,#fff8f2 0 58%,#f7c4d7 58%)}
+.website-sorbet .siteHero:before{content:"SWEET IDEAS / SHARP STRATEGY";position:absolute;left:5.5cqw;bottom:2.5cqw;font:850 .58cqw var(--font-sans);letter-spacing:.16em;color:#a55778}
+.website-sorbet .siteHero>.deckMedia{border:.6cqw solid #fff;border-radius:3cqw;box-shadow:1.15cqw 1.15cqw 0 #a98bea;transform:rotate(2deg)}
+.website-sorbet .heroMark{color:#ff8f7b12;transform:rotate(-5deg)}
+.website-sorbet .heroActions a{color:#3f2947;background:#ffe08a}
+.website-sorbet .webProof{margin:0 2.2cqw;border:0;border-radius:1.4cqw;background:#c9b8f6;overflow:hidden}
+.website-sorbet .webProof span{border-color:#ffffff80}
+.website-sorbet .webAbout{background:#fffdf8}
+.website-sorbet .siteWork{background:linear-gradient(180deg,#ffe0d5,#fff2cf)}
+.website-sorbet .webProjectGroup .deckMedia{border:.45cqw solid #fff;border-radius:1.8cqw;box-shadow:.55cqw .65cqw 0 #a98bea55}
+.website-sorbet .serviceCards article{border:0;border-radius:1.8cqw;background:#fff3ed}
+.website-sorbet .serviceCards article:nth-child(3n+2){background:#f0ebff}
+.website-sorbet .serviceCards article:nth-child(3n+3){background:#fff5c9}
+.website-sorbet .webAudienceCard{background:linear-gradient(145deg,#6e4e7b,#a98bea);border-radius:3cqw}
+.website-sorbet .webContact{background:linear-gradient(120deg,#f49a87,#a98bea)}
+.website-sorbet .webContact>a{color:#3f2947;background:#fff5c9}
+
+/* Lavender Cloud — airy minimalism with soft glass layers. */
+.website-lavender{--web-paper:#faf8ff;--web-ink:#302b5b;--web-soft:#ebe7ff;--web-card:#fff}
+.website-lavender .siteNav{background:#faf8ffcc;border-bottom-color:#7167b322}
+.website-lavender .siteNav .navContact{color:#fff;background:#7167b3;border-color:#7167b3}
+.website-lavender .siteHero{grid-template-columns:1.16fr .84fr;background:radial-gradient(circle at 82% 18%,#d6efff 0 13%,transparent 13.2%),radial-gradient(circle at 70% 78%,#f7d8ed 0 17%,transparent 17.2%),linear-gradient(150deg,#faf8ff,#eeeaff)}
+.website-lavender .siteHero:before{content:"";position:absolute;inset:3cqw;border:.1cqw solid #7167b326;border-radius:3cqw}
+.website-lavender .siteHero>.deckMedia{height:39cqw;border:.35cqw solid #ffffffcc;border-radius:50% 50% 4cqw 4cqw;box-shadow:0 2cqw 5cqw #7167b32c}
+.website-lavender .heroMark{color:#7167b30a;font-family:var(--font-serif)}
+.website-lavender .heroActions a{background:#7167b3}
+.website-lavender .webProof{gap:1cqw;padding:2cqw;border:0;background:#faf8ff}
+.website-lavender .webProof span{border:1px solid #7167b31f;border-radius:1.2cqw;background:#ffffff9e;box-shadow:0 .8cqw 2cqw #7167b310}
+.website-lavender .webProof b{color:#7167b3}
+.website-lavender .webAbout{background:#fff}
+.website-lavender .siteWork{background:linear-gradient(180deg,#ebe7ff,#f8eff8)}
+.website-lavender .webProjectGroup .deckMedia{border-radius:2.8cqw;box-shadow:0 1.2cqw 2.8cqw #51488d20}
+.website-lavender .webProjectGroup .deckMedia:nth-child(even){transform:translateY(1.2cqw)}
+.website-lavender .serviceCards article{border-color:#7167b31e;border-radius:2.5cqw;background:#faf8ff}
+.website-lavender .webAudienceCard{border:1px solid #ffffff60;border-radius:4cqw;background:linear-gradient(155deg,#7167b3,#3b376d);box-shadow:0 2cqw 5cqw #7167b32b}
+.website-lavender .webContact{background:linear-gradient(150deg,#615aa1,#8d86d2)}
+.website-lavender .webContact>a{color:#302b5b;background:#e7f6ff}
+
+/* Mint Picnic — organic mint, pistachio and butter shapes. */
+.website-mint{--web-paper:#f8fff8;--web-ink:#17463d;--web-soft:#dff3e5;--web-card:#fffdf4}
+.website-mint .siteNav{background:#f8fff8e3;border-bottom-color:#17463d22}
+.website-mint .siteNav .navContact{color:#17463d;background:#f7d97e;border-color:#f7d97e}
+.website-mint .siteHero{grid-template-columns:.9fr 1.1fr;background:radial-gradient(ellipse at 95% 10%,#f7d97e 0 17%,transparent 17.3%),radial-gradient(ellipse at 8% 105%,#a8dfbc 0 24%,transparent 24.3%),#f8fff8}
+.website-mint .siteHero>div:first-child{order:2}
+.website-mint .siteHero>.deckMedia{order:1;height:40cqw;border:.55cqw solid #fff;border-radius:22cqw 22cqw 7cqw 7cqw;box-shadow:-1cqw 1.25cqw 0 #83cfa5}
+.website-mint .siteHero:before{content:"GROWN WITH CARE  ✦  MADE TO CONNECT";position:absolute;right:5.5cqw;bottom:2.6cqw;font:850 .58cqw var(--font-sans);letter-spacing:.14em;color:#438466}
+.website-mint .heroMark{right:auto;left:2cqw;color:#83cfa511;transform:rotate(-8deg)}
+.website-mint .heroActions a{color:#17463d;background:#f7d97e}
+.website-mint .webProof{color:#17463d;background:#f7d97e;border:0}
+.website-mint .webProof span{border-color:#17463d24}
+.website-mint .webProof b{font-family:var(--font-sans);font-weight:850}
+.website-mint .webAbout{background:#fffdf4}
+.website-mint .siteWork{background:radial-gradient(circle at 7% 12%,#fff6c8 0 7%,transparent 7.2%),#dff3e5}
+.website-mint .webProjectGroup .deckMedia{border:.35cqw solid #fff;border-radius:45% 45% 1.5cqw 1.5cqw;box-shadow:.65cqw .8cqw 0 #5da78135}
+.website-mint .serviceCards article{border:0;border-radius:3cqw 3cqw .8cqw .8cqw;background:#edf9ef}
+.website-mint .serviceCards article:nth-child(even){background:#fff8d7}
+.website-mint .webAudienceCard{border-radius:50% 50% 3cqw 3cqw;background:linear-gradient(150deg,#438466,#17463d)}
+.website-mint .webContact{background:#17463d}
+.website-mint .webContact>a{color:#17463d;background:#f7d97e}
+
+/* Electric Pulse — neon cyan, magenta and acid-lime digital pop. */
+.website-electric{--web-paper:#0d0a20;--web-ink:#f9f7ff;--web-soft:#1a123a;--web-card:#120e2b}
+.website-electric .siteNav{color:#fff;background:#0d0a20e8;border-bottom-color:#00e5ff42}
+.website-electric .siteNav strong{font-family:var(--font-sans);font-weight:900;text-transform:uppercase}
+.website-electric .siteNav .navContact{color:#0d0a20;background:#d8ff2f;border-color:#d8ff2f;box-shadow:0 0 1.2cqw #d8ff2f66}
+.website-electric .siteHero{grid-template-columns:1fr .82fr;min-height:58cqw;color:#fff;background:radial-gradient(circle at 88% 16%,#00e5ff 0 8%,transparent 8.3%),radial-gradient(circle at 13% 88%,#ff35c8 0 13%,transparent 13.3%),linear-gradient(135deg,#150b36 0 45%,#391270 100%)}
+.website-electric .siteHero:before{content:"LIVE / CREATE / REPEAT";position:absolute;left:5.5cqw;bottom:2.4cqw;color:#d8ff2f;font:900 .62cqw ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.2em}
+.website-electric .siteHero h1{font-family:var(--font-sans);font-size:5.9cqw;font-weight:900;line-height:.88;text-transform:uppercase;text-shadow:.35cqw .35cqw 0 #ff35c8}
+.website-electric .siteHero p,.website-electric .heroActions span{color:#d9d3f3}
+.website-electric .siteHero>.deckMedia{border:.28cqw solid #00e5ff;border-radius:1.2cqw;box-shadow:1cqw 1cqw 0 #d8ff2f,-.8cqw -.8cqw 0 #ff35c8;transform:rotate(-2deg)}
+.website-electric .heroMark{color:#00e5ff12;transform:skewX(-10deg)}
+.website-electric .heroActions a{color:#0d0a20;background:#d8ff2f;border-radius:.55cqw}
+.website-electric .webProof{gap:2px;padding:2px;color:#fff;background:linear-gradient(90deg,#00e5ff,#ff35c8,#d8ff2f);border:0}
+.website-electric .webProof span{border:0;background:#0d0a20;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.website-electric .webProof b{color:#00e5ff;font-family:var(--font-sans);font-weight:900}
+.website-electric .webAbout,.website-electric .webServices,.website-electric .webBrands{background:#120e2b}
+.website-electric .siteWork{background-color:#1a123a;background-image:linear-gradient(#00e5ff0f 1px,transparent 1px),linear-gradient(90deg,#00e5ff0f 1px,transparent 1px);background-size:3cqw 3cqw}
+.website-electric .webProjectGroup>header{border-color:#00e5ff55}
+.website-electric .webProjectGroup .deckMedia{border:.22cqw solid #00e5ff;border-radius:.5cqw;box-shadow:.65cqw .65cqw 0 #ff35c8}
+.website-electric .webProjectGroup .deckMedia:hover{box-shadow:1cqw 1cqw 0 #d8ff2f;transform:translate(-.25cqw,-.5cqw) rotate(1deg)}
+.website-electric .contentFormats span{border-color:#d8ff2f;color:#d8ff2f}
+.website-electric .serviceCards article,.website-electric .webBrands article{border:.14cqw solid #633aa7;border-radius:.65cqw;background:#1a123a}
+.website-electric .serviceCards article:hover{color:#0d0a20;background:#d8ff2f;box-shadow:.65cqw .65cqw 0 #ff35c8}
+.website-electric .webAudienceCard{border:.2cqw solid #00e5ff;border-radius:.8cqw;background:linear-gradient(145deg,#241149,#0d0a20);box-shadow:1cqw 1cqw 0 #ff35c8}
+.website-electric .webAudienceRing{background:radial-gradient(circle,#0d0a20 0 46%,transparent 47%),conic-gradient(#d8ff2f 0 83%,#ffffff20 83%)}
+.website-electric .webContact{color:#0d0a20;background:#d8ff2f}
+.website-electric .webContact h2{font-family:var(--font-sans);font-weight:900;text-transform:uppercase}
+.website-electric .webContact>a{color:#fff;background:#0d0a20;border-radius:.55cqw;box-shadow:.65cqw .65cqw 0 #ff35c8}
+
+/* Each website direction gets its own scroll choreography. */
+@keyframes museReveal{from{opacity:.2;clip-path:inset(0 0 18% 0);transform:translateY(4cqw)}to{opacity:1;clip-path:inset(0);transform:none}}
+@keyframes creatorReveal{from{opacity:.15;filter:blur(.8cqw);transform:translateX(-3cqw)}to{opacity:1;filter:none;transform:none}}
+@keyframes auraReveal{from{opacity:.15;transform:translateY(4cqw) scale(.92) rotate(-1deg)}to{opacity:1;transform:none}}
+@keyframes noirReveal{from{opacity:.05;clip-path:inset(0 100% 0 0);transform:translateX(-2cqw)}to{opacity:1;clip-path:inset(0);transform:none}}
+@keyframes sorbetReveal{from{opacity:.1;transform:translateY(4cqw) rotate(1.5deg) scale(.96)}to{opacity:1;transform:none}}
+@keyframes lavenderReveal{from{opacity:.05;filter:blur(1cqw);transform:translateY(2cqw)}to{opacity:1;filter:none;transform:none}}
+@keyframes mintReveal{from{opacity:.08;clip-path:ellipse(25% 20% at 50% 100%);transform:translateY(3cqw)}to{opacity:1;clip-path:ellipse(100% 100% at 50% 50%);transform:none}}
+@keyframes electricReveal{from{opacity:.15;filter:hue-rotate(70deg);transform:translateX(-4cqw) skewX(-5deg)}to{opacity:1;filter:none;transform:none}}
+@keyframes auraFloat{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-1cqw) rotate(1deg)}}
+@supports(animation-timeline:view()){
+  .website-muse.expanded .webSection{animation-name:museReveal;animation-timing-function:cubic-bezier(.2,.7,.2,1)}
+  .website-creator.expanded .webSection{animation-name:creatorReveal;animation-timing-function:linear}
+  .website-aura.expanded .webSection{animation-name:auraReveal;animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  .website-noir.expanded .webSection{animation-name:noirReveal;animation-timing-function:steps(7,end)}
+  .website-sorbet.expanded .webSection{animation-name:sorbetReveal;animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  .website-lavender.expanded .webSection{animation-name:lavenderReveal;animation-timing-function:ease-out}
+  .website-mint.expanded .webSection{animation-name:mintReveal;animation-timing-function:cubic-bezier(.2,.8,.2,1)}
+  .website-electric.expanded .webSection{animation-name:electricReveal;animation-timing-function:steps(8,end)}
+}
+.website-muse.compact .webSection:hover{transform:translateY(-.25cqw)}
+.website-creator.compact .webSection:hover{transform:translateX(.25cqw)}
+.website-aura.compact .webSection:hover{transform:scale(.995)}
+.website-noir.compact .webSection:hover{transform:translateX(-.25cqw)}
+.website-sorbet.compact .webSection:hover{transform:rotate(.2deg) scale(.997)}
+.website-lavender.compact .webSection:hover{transform:translateY(-.22cqw)}
+.website-mint.compact .webSection:hover{transform:scale(.997)}
+.website-electric.compact .webSection:hover{transform:translateX(.3cqw) skewX(-.2deg)}
+
+/* Website selector cards mirror the actual visual systems. */
+.themePreview.muse{color:#202b46;background:linear-gradient(110deg,#fff9ef 0 68%,#f3c1aa 68%)}
+.themePreview.muse u{border-radius:50% 50% 4px 4px;background:linear-gradient(145deg,#f4c0aa,#20304f);box-shadow:4px 4px 0 #d75e49}
+.themePreview.creator{color:#f7f9ff;background-color:#101a35;background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:14px 14px}
+.themePreview.creator u{left:8px;right:auto;top:24px;width:42%;height:64%;border:2px solid #7892ff;border-radius:3px;background:#283c7c;box-shadow:4px 4px 0 #61efc4}
+.themePreview.creator em{left:auto;right:10px;color:#61efc4;font-family:Arial,sans-serif;font-weight:800}
+.themePreview.aura{color:#542044;background:radial-gradient(circle at 15% 18%,#ff9d83 0 10%,transparent 11%),radial-gradient(circle at 90% 5%,#b9a5ff 0 12%,transparent 13%),#fff1f4}
+.themePreview.aura u{border:4px solid #fff;border-radius:50%;background:linear-gradient(145deg,#ffc6d6,#8c68e8);box-shadow:4px 5px 0 #8c68e844}
+.themePreview.noir{color:#ff9a72;background:linear-gradient(90deg,#121317 0 70%,#ff9a72 70%)}
+.themePreview.noir u{border:2px solid #ff9a72;border-radius:0;background:linear-gradient(145deg,#ff9a72,#17191e);box-shadow:-4px 4px 0 #f6ebdf}
+.themePreview.noir em{font-family:Arial Black,Arial,sans-serif;font-style:normal}
+.themePreview.sorbet{color:#3f2947;background:radial-gradient(circle at 15% 18%,#ffe08a 0 11%,transparent 12%),linear-gradient(120deg,#fff8f2 0 58%,#f7c4d7 58%)}
+.themePreview.sorbet u{border:4px solid #fff;border-radius:9px;background:linear-gradient(145deg,#ffb39d,#a98bea);box-shadow:4px 5px 0 #a98bea}
+.themePreview.sorbet em{color:#a55778;font-family:'Times New Roman',serif;font-weight:800}
+.themePreview.lavender{color:#302b5b;background:radial-gradient(circle at 82% 15%,#d6efff 0 14%,transparent 15%),linear-gradient(145deg,#faf8ff,#e9e4ff)}
+.themePreview.lavender u{border:3px solid #fff;border-radius:50% 50% 8px 8px;background:linear-gradient(145deg,#f7d8ed,#7167b3);box-shadow:0 5px 12px #7167b340}
+.themePreview.lavender em{color:#7167b3;font-style:italic}
+.themePreview.mint{color:#17463d;background:radial-gradient(circle at 85% 12%,#f7d97e 0 16%,transparent 17%),#e6f6e9}
+.themePreview.mint u{left:8px;right:auto;border:4px solid #fff;border-radius:50% 50% 8px 8px;background:linear-gradient(145deg,#a8dfbc,#438466);box-shadow:-4px 5px 0 #83cfa5}
+.themePreview.mint em{left:auto;right:9px;color:#438466;font-style:italic}
+.themePreview.electric{color:#d8ff2f;background:radial-gradient(circle at 88% 14%,#00e5ff 0 12%,transparent 13%),linear-gradient(145deg,#180c39,#54168b)}
+.themePreview.electric u{border:2px solid #00e5ff;border-radius:3px;background:linear-gradient(145deg,#ff35c8,#251050);box-shadow:4px 4px 0 #d8ff2f}
+.themePreview.electric em{color:#fff;font-family:Arial Black,Arial,sans-serif;font-style:normal;text-shadow:2px 2px 0 #ff35c8}
+
+@media(max-width:700px){
+  .websitePortfolio.expanded .siteHero:after,.websitePortfolio.expanded .siteHero:before{display:none}
+  .website-muse.expanded .siteHero,.website-creator.expanded .siteHero,.website-aura.expanded .siteHero,.website-noir.expanded .siteHero,.website-sorbet.expanded .siteHero,.website-lavender.expanded .siteHero,.website-mint.expanded .siteHero,.website-electric.expanded .siteHero{grid-template-columns:1fr;background-size:auto}
+  .website-creator.expanded .siteHero>.deckMedia{order:initial}
+  .website-aura.expanded .webAbout{margin:18px}
+  .website-aura.expanded .webProof{margin:0 12px;border-radius:28px}
+  .website-noir.expanded .siteHero{background:linear-gradient(#121317 0 72%,#ff9a72 72%)}
+  .website-noir.expanded .siteHero h1{font-size:3.35rem}
+  .website-mint.expanded .siteHero>div:first-child{order:initial}
+  .website-mint.expanded .siteHero>.deckMedia{order:initial}
+  .website-electric.expanded .siteHero h1{font-size:3.35rem}
+  .website-sorbet.expanded .webProof,.website-lavender.expanded .webProof{margin:0 12px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .portfolioDeck *,.websitePortfolio *{scroll-behavior:auto!important;animation:none!important;transition-duration:.01ms!important}
+}
