@@ -1,4 +1,4 @@
-/* Vinext currently keeps plain anchors stable across this server-rendered fallback. */
+/* The fallback keeps a plain home link so it works without client-side JavaScript. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 
 export default function NotFound() {

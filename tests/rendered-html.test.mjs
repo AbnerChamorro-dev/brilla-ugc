@@ -2,28 +2,27 @@ import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render(path = "/") {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${path}`);
-  const { default: worker } = await import(workerUrl.href);
+test("keeps the Brilla product and native Next.js routes", async () => {
+  const [home, layout, manifest] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
 
-  return worker.fetch(
-    new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
-    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
-    { waitUntil() {}, passThroughOnException() {} },
-  );
-}
-
-test("server-renders the Brilla product instead of the starter preview", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
-
-  const html = await response.text();
-  assert.match(html, /Brilla — Portafolios para creadoras UGC/i);
-  assert.match(html, /Tu portafolio listo/i);
-  assert.match(html, /href="\/crear"/i);
-  assert.doesNotMatch(html, /codex-preview|Building your site|react-loading-skeleton/i);
+  assert.match(layout, /Brilla — Portafolios para creadoras UGC/i);
+  assert.match(home, /Tu portafolio listo/i);
+  assert.match(home, /href="\/crear"/i);
+  assert.doesNotMatch(home, /codex-preview|Building your site|react-loading-skeleton/i);
+  assert.match(manifest, /"build":\s*"next build"/i);
+  assert.match(manifest, /"next":\s*"16\.3\.4"/i);
+  const packages = JSON.parse(manifest);
+  const installedPackages = {
+    ...packages.dependencies,
+    ...packages.devDependencies,
+  };
+  for (const obsoletePackage of ["vinext", "wrangler", "nitro", "@cloudflare/vite-plugin"]) {
+    assert.equal(installedPackages[obsoletePackage], undefined);
+  }
 });
 
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
@@ -98,6 +97,7 @@ test("publishes real slug routes without exposing private portfolio data", async
   assert.match(editor, /window\.location\.origin\}\/\$\{data\.portfolioSlug\}/);
   assert.match(editor, /Ver publicado/);
   assert.match(editor, /Despublicar/);
+  assert.doesNotMatch(editor, /PasswordGate|Con contraseña|data\.visibility|data\.password/);
 
   assert.match(publicPage, /rpc\("get_published_portfolio"/);
   assert.match(publicPage, /createSignedUrl\(/);

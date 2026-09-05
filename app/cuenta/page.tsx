@@ -1,6 +1,6 @@
 "use client";
 
-/* Plain links avoid a duplicate React runtime in the current vinext build. */
+/* Account navigation intentionally uses plain links across authentication redirects. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 
 import { useEffect, useState } from "react";

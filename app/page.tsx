@@ -1,6 +1,6 @@
 "use client";
 
-/* Vinext currently keeps plain anchors stable across the home/editor client boundary. */
+/* The landing page intentionally uses plain anchors for section links and primary CTAs. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 
 import { useRef, useState } from "react";
@@ -9,7 +9,7 @@ const benefits = [
   { icon: "02", title: "Lista en 2 minutos", text: "Rellena tus datos, elige un estilo y deja que Brilla se encargue del diseño." },
   { icon: "▶", title: "Video de verdad", text: "Reels, TikToks y Shorts se reproducen dentro del portafolio, sin sacar a la marca." },
   { icon: "↻", title: "Métricas siempre vivas", text: "Conecta tus redes o actualiza tus cifras al instante, sin rediseñar ni exportar de nuevo." },
-  { icon: "◉", title: "Sabes cuándo te ven", text: "Protege el enlace con clave y recibe una alerta cuando una marca abre tu portafolio." },
+  { icon: "◉", title: "Sabes cuándo te ven", text: "Recibe una alerta cuando una marca abre tu portafolio y consulta su actividad." },
 ];
 
 const comparison = [
@@ -17,7 +17,7 @@ const comparison = [
   ["Experiencia móvil", "Diseño rígido o PDF", "100% responsiva y nativa"],
   ["Métricas", "Manuales y estáticas", "Actualizables al instante"],
   ["Video UGC", "Pesado o enlace externo", "Reproducción integrada"],
-  ["Privacidad", "Un único enlace público", "Clave y enlace privado"],
+  ["Publicación", "Un único enlace público", "Enlace profesional actualizable"],
   ["Seguimiento", "Sin alertas de lectura", "Avisos de visualización"],
   ["Media kit", "Maquetación manual", "PDF estético en un clic"],
 ];
@@ -146,7 +146,7 @@ export default function Home() {
         <div className="pricingCopy"><span className="kicker">Gratis de verdad</span><h2>Tu talento ya cuesta.<br /><em>Tu portafolio no.</em></h2><p>Sin tarjeta, sin prueba de 7 días y sin esconder lo importante detrás de un pago.</p></div>
         <div className="freeCard">
           <div><span className="plan">BRILLA GRATIS</span><div className="price"><strong>$0</strong><span>para siempre</span></div></div>
-          <ul><li><span>✓</span><strong>Web responsiva</strong><small>con enlace para compartir</small></li><li><span>✓</span><strong>Contenido completo</strong><small>videos, fotos y tarifas</small></li><li><span>✓</span><strong>Métricas y alertas</strong><small>de cada visualización</small></li><li><span>✓</span><strong>Enlace protegido</strong><small>con contraseña opcional</small></li><li><span>✓</span><strong>Media kit PDF</strong><small>listo en un clic</small></li></ul>
+          <ul><li><span>✓</span><strong>Web responsiva</strong><small>con enlace para compartir</small></li><li><span>✓</span><strong>Contenido completo</strong><small>videos, fotos y tarifas</small></li><li><span>✓</span><strong>Métricas y alertas</strong><small>de cada visualización</small></li><li><span>✓</span><strong>Enlace profesional</strong><small>fácil de compartir y actualizar</small></li><li><span>✓</span><strong>Media kit PDF</strong><small>listo en un clic</small></li></ul>
           <a href="/crear">Crear mi portafolio <span>↗</span></a>
         </div>
       </section>

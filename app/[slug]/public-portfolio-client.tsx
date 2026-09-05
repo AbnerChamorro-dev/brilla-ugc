@@ -1,6 +1,6 @@
 "use client";
 
-/* Vinext currently keeps plain anchors stable across the public/editor client boundary. */
+/* The public portfolio keeps a plain external-style link back to Brilla. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 
 import {

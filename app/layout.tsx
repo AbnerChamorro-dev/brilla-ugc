@@ -15,16 +15,16 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     metadataBase: new URL(origin),
     title: "Brilla — Portafolios para creadoras UGC",
-    description: "Crea gratis en 2 minutos un portafolio UGC responsivo con video, métricas, privacidad y PDF.",
+    description: "Crea gratis en 2 minutos un portafolio UGC responsivo con video, métricas, enlace profesional y PDF.",
     openGraph: {
       title: "Brilla — Tu portafolio UGC gratis en 2 minutos",
-      description: "Web responsiva, video, métricas, privacidad y PDF. Todo en un único enlace profesional.",
+      description: "Web responsiva, video, métricas y PDF. Todo en un único enlace profesional.",
       images: [{ url: `${origin}/og.png`, width: 1200, height: 630, alt: "Brilla, portafolios para creadoras UGC" }],
     },
     twitter: {
       card: "summary_large_image",
       title: "Brilla — Tu portafolio UGC gratis en 2 minutos",
-      description: "Web responsiva, video, métricas, privacidad y PDF. Todo en un único enlace profesional.",
+      description: "Web responsiva, video, métricas y PDF. Todo en un único enlace profesional.",
       images: [`${origin}/og.png`],
     },
   };

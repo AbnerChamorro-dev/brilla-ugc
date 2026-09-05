@@ -17,7 +17,7 @@ El portal para empresas queda fuera de esta etapa. La información se organizar�
 - Carga local de fotos, videos y logos.
 - Vista previa del portafolio.
 - Campos de identidad, audiencia, servicios, tarifas y contacto.
-- Opciones visuales de privacidad y publicación.
+- Controles de publicación y vista previa.
 - Impresión básica como PDF.
 - Diseño adaptable a móvil y computador.
 
@@ -27,7 +27,6 @@ El portal para empresas queda fuera de esta etapa. La información se organizar�
 - Los archivos se guardan en el dispositivo mediante almacenamiento local.
 - El botón de publicación no crea todavía una página pública real.
 - El enlace copiado vuelve al editor y no a un portafolio independiente.
-- La contraseña protege únicamente la demostración local.
 - La sincronización de métricas es simulada.
 - Las visualizaciones y notificaciones no provienen de visitas externas reales.
 - El PDF depende de la función de impresión del navegador.
@@ -36,18 +35,15 @@ El portal para empresas queda fuera de esta etapa. La información se organizar�
 
 Una creadora deberá poder:
 
-1. Crear y verificar una cuenta.
-2. Iniciar y cerrar sesión.
-3. Recuperar su contraseña.
-4. Crear un portafolio y guardarlo automáticamente.
-5. Subir fotos, videos, retratos y logos.
-6. Previsualizar todas las plantillas.
-7. Elegir un enlace público único.
-8. Publicar, actualizar y despublicar el portafolio.
-9. Protegerlo opcionalmente con contraseña.
-10. Compartirlo y consultar visitas y clics básicos.
-11. Descargar una versión PDF correctamente maquetada.
-12. Editar o eliminar su cuenta y sus datos.
+1. Iniciar y cerrar sesión con Google.
+2. Crear un portafolio y guardarlo automáticamente.
+3. Subir fotos, videos, retratos y logos.
+4. Previsualizar todas las plantillas.
+5. Elegir un enlace público único.
+6. Publicar, actualizar y despublicar el portafolio.
+7. Compartirlo y consultar visitas y clics básicos.
+8. Descargar una versión PDF correctamente maquetada.
+9. Editar o eliminar su cuenta y sus datos.
 
 ## Fases de implementación
 
@@ -78,7 +74,7 @@ Una creadora deberá poder:
 - URL de retorno de producción configurada.
 - URLs de retorno locales (`localhost:3000`, `3001` y `3002`) y de producción registradas en Supabase.
 
-El SMTP ya no es necesario para registro, verificación o recuperación de contraseña porque el acceso será exclusivamente con Google. Se conserva como trabajo posterior para correos transaccionales y alertas de la plataforma.
+El SMTP no es necesario para el acceso porque la autenticación será exclusivamente con Google. Se conserva como trabajo posterior para correos transaccionales y alertas de la plataforma.
 
 ### Fase 2 — Base de datos
 
@@ -91,7 +87,7 @@ Guardar permanentemente:
 - Audiencia y métricas declaradas.
 - Servicios, entregables y tarifas.
 - Datos de contacto y disponibilidad.
-- Configuración de privacidad.
+- Configuración de publicación.
 - Estado de borrador o publicado.
 - Fecha de creación y última actualización.
 
@@ -156,23 +152,11 @@ Guardar permanentemente:
 - Publicar, seguir actualizando y despublicar ya modifican el estado real almacenado en Supabase.
 - El botón para compartir copia la URL pública real y permite abrirla en otra pestaña.
 - La página pública solo recibe portafolios con estado `published` y visibilidad `public`.
-- La contraseña y preferencias internas se eliminan de la respuesta pública antes de salir de la base de datos.
+- Las preferencias internas se eliminan de la respuesta pública antes de salir de la base de datos.
 - Fotos, videos, miniaturas y logos permanecen en el bucket privado y se entregan mediante enlaces firmados temporales.
 - Cada portafolio genera título, descripción e imagen social propios a partir de sus datos y retrato.
 - Los enlaces inexistentes, despublicados o no públicos muestran una página 404 de Brilla y no exponen datos.
-- La publicación protegida con contraseña continúa reservada para la Fase 5.
-
-### Fase 5 — Privacidad
-
-- Portafolio público, protegido o despublicado.
-- Contraseñas almacenadas de forma segura, nunca visibles en el código público.
-- Límite de intentos fallidos.
-- Posibilidad de cambiar o eliminar la contraseña.
-- Enlaces privados revocables como mejora posterior.
-
-**Criterio de finalización:** el contenido protegido no puede obtenerse sin superar la validación del servidor.
-
-### Fase 6 — Panel de la creadora
+### Fase 5 — Panel de la creadora
 
 - Resumen de su portafolio.
 - Estado de publicación.
@@ -183,7 +167,7 @@ Guardar permanentemente:
 
 **Criterio de finalización:** la creadora puede administrar su portafolio sin recorrer nuevamente todo el editor.
 
-### Fase 7 — Analítica y notificaciones
+### Fase 6 — Analítica y notificaciones
 
 - Registro de visitas reales.
 - Conteo de visitantes aproximados sin prometer identidad individual.
@@ -194,7 +178,7 @@ Guardar permanentemente:
 
 **Criterio de finalización:** las cifras del panel provienen de actividad real y no de una simulación local.
 
-### Fase 8 — Conexión opcional con Instagram
+### Fase 7 — Conexión opcional con Instagram
 
 Esta integración se desarrollará después de que cuentas, base de datos, publicación y analítica propia estén funcionando. No será un requisito para crear o publicar un portafolio.
 
@@ -215,17 +199,16 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 **Criterio de finalización:** una creadora puede conectar y desconectar voluntariamente su cuenta profesional, Brilla actualiza únicamente los datos autorizados y el portafolio continúa funcionando si la integración falla.
 
-### Fase 9 — PDF y comunicación
+### Fase 8 — PDF y comunicación
 
 - PDF consistente para cada plantilla.
-- Correos de bienvenida y verificación.
-- Recuperación de contraseña.
+- Correos de bienvenida.
 - Confirmación de publicación.
 - Avisos de seguridad y actividad cuando corresponda.
 
 **Criterio de finalización:** las comunicaciones esenciales y la descarga funcionan sin depender de pasos manuales.
 
-### Fase 10 — Seguridad, privacidad y control
+### Fase 9 — Seguridad, privacidad y control
 
 - Política de privacidad y términos de uso.
 - Consentimiento para datos personales y analítica no esencial.
@@ -237,7 +220,7 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 **Criterio de finalización:** una creadora puede entender, controlar y eliminar la información que Brilla conserva.
 
-### Fase 11 — Calidad y lanzamiento
+### Fase 10 — Calidad y lanzamiento
 
 - Pruebas en móvil, tablet y computador.
 - Pruebas de todas las plantillas.
@@ -247,7 +230,7 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 - Seguimiento de errores y rendimiento.
 - Preparación del entorno de producción.
 
-**Criterio de finalización:** los flujos críticos de registro, edición, publicación, privacidad y eliminación pasan las pruebas antes de publicar.
+**Criterio de finalización:** los flujos críticos de registro, edición, publicación y eliminación pasan las pruebas antes de publicar.
 
 ## Orden de trabajo recomendado
 
@@ -255,17 +238,17 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 2. Base de datos.
 3. Almacenamiento multimedia.
 4. Publicación mediante enlaces reales.
-5. Privacidad con contraseña.
-6. Panel de la creadora.
-7. Analítica y notificaciones.
-8. Conexión opcional con Instagram.
-9. PDF y correos.
-10. Seguridad, privacidad y pruebas.
-11. Lanzamiento.
+5. Panel de la creadora.
+6. Analítica y notificaciones.
+7. Conexión opcional con Instagram.
+8. PDF y correos.
+9. Seguridad, privacidad y pruebas.
+10. Lanzamiento.
 
 ## Decisiones de producto para el MVP
 
 - El portafolio básico seguirá siendo gratuito para las creadoras.
+- Los portafolios serán públicos o despublicados; Brilla no ofrecerá protección con contraseña.
 - El portal empresarial no se construirá en esta fase.
 - Las métricas de redes sociales se ingresarán manualmente en el MVP.
 - La conexión con Instagram será opcional y se implementará después de la base funcional.
@@ -278,4 +261,4 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 ## Próximo hito
 
-Implementar conjuntamente **cuentas, base de datos y almacenamiento**, porque son la base necesaria para guardar, publicar y administrar portafolios reales.
+Implementar el **panel de la creadora** para administrar el portafolio publicado, consultar su estado y acceder rápidamente a sus acciones principales.

@@ -1,6 +1,6 @@
 "use client";
 
-/* The editor uses a plain home link to avoid a duplicate React runtime in vinext. */
+/* The editor intentionally uses plain anchors for navigation outside the form. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 /* User media uses local blob URLs and private signed URLs, so Next image optimization is not applicable here. */
 /* eslint-disable @next/next/no-img-element */
@@ -19,7 +19,7 @@ export type Portfolio = {
   followers: string; monthlyViews: string; womenAudience: string; topCountries: string;
   videoRate: string; collabRate: string; storyRate: string; storyPackRate: string; usageRate: string;
   email: string; whatsapp: string; instagram: string; tiktok: string; availability: string;
-  visibility: "public" | "password"; password: string; notifyViews: boolean; metricSync: boolean; portfolioSlug: string;
+  notifyViews: boolean; metricSync: boolean; portfolioSlug: string;
 };
 export type Media = { id: number; name: string; type: "video" | "image"; url: string; framed: boolean; category: string; instagram: string; tiktok: string; storagePath?: string; previewUrl?: string; previewPath?: string };
 export type BrandAsset = { id: number; name: string; url: string; storagePath?: string };
@@ -205,7 +205,7 @@ const steps = [
   ["Audiencia", "Demuestra tu alcance", "Agrega las cifras que ayudan a una marca a tomar decisiones."],
   ["Tarifas", "Define tu oferta comercial", "Explica entregables, precios y derechos de uso."],
   ["Contacto", "Abre la conversación", "Deja claros tus canales, formatos y disponibilidad."],
-  ["Publicar", "Comparte con control total", "Activa privacidad, alertas y descarga tu media kit."],
+  ["Publicar", "Comparte tu portafolio", "Elige tu enlace, revisa el resultado y publícalo."],
 ];
 const categories = ["Campañas", "Cabello", "Beauty", "Familia", "Empresas", "Lugares", "Fotografía"];
 const nicheOptions = ["Beauty", "Lifestyle", "Fashion", "Food", "Travel", "Fitness", "Tech", "Wellness", "Maternidad", "Hogar"];
@@ -266,8 +266,17 @@ const initial: Portfolio = {
   followers: "50.5 mil", monthlyViews: "700.2 K", womenAudience: "82.9%", topCountries: "Colombia 79.2% · Estados Unidos 3.3% · México 3% · España 2.5%",
   videoRate: "$350.000 COP", collabRate: "$400.000 COP", storyRate: "$80.000 COP", storyPackRate: "$210.000 COP", usageRate: "$80.000 COP / mes",
   email: "hola@sofiaugc.com", whatsapp: "+57 314 722 5878", instagram: "@sofia.crea", tiktok: "@sofia.crea", availability: "Disponible para campañas y colaboraciones",
-  visibility: "public", password: "", notifyViews: true, metricSync: false, portfolioSlug: "sofia-mendoza",
+  notifyViews: true, metricSync: false, portfolioSlug: "sofia-mendoza",
 };
+
+function restorePortfolio(value: unknown): Portfolio {
+  const stored = value && typeof value === "object" && !Array.isArray(value)
+    ? { ...(value as Record<string, unknown>) }
+    : {};
+  delete stored.password;
+  delete stored.visibility;
+  return { ...initial, ...stored } as Portfolio;
+}
 
 export default function CreatePortfolio() {
   return <PortfolioEditor />;
@@ -281,7 +290,6 @@ function PortfolioEditor() {
   const [category, setCategory] = useState(categories[0]);
   const [saved, setSaved] = useState(true);
   const [finalView, setFinalView] = useState(false);
-  const [locked, setLocked] = useState(false);
   const [publicationStatus, setPublicationStatus] = useState<"draft" | "published" | "unpublished">("draft");
   const [publishBusy, setPublishBusy] = useState(false);
   const [publishError, setPublishError] = useState("");
@@ -318,7 +326,7 @@ function PortfolioEditor() {
     const timer = window.setTimeout(() => {
       if (draft) {
         try {
-          const restored = { ...initial, ...JSON.parse(draft) } as Portfolio;
+          const restored = restorePortfolio(JSON.parse(draft));
           dataRef.current = restored;
           setData(restored);
         } catch { /* keep defaults */ }
@@ -382,7 +390,7 @@ function PortfolioEditor() {
       const hasRemoteContent = Boolean(remoteContent) && typeof remoteContent === "object" && !Array.isArray(remoteContent) && Object.keys(remoteContent as object).length > 0;
 
       if (hasRemoteContent && !localMustWin) {
-        const restored = { ...initial, ...(remoteContent as Partial<Portfolio>) };
+        const restored = restorePortfolio(remoteContent);
         dataRef.current = restored;
         setData(restored);
         setPublicationStatus(stored?.status === "published" ? "published" : stored?.status === "unpublished" ? "unpublished" : "draft");
@@ -707,7 +715,7 @@ function PortfolioEditor() {
     void deleteAsset("brand", id).catch(() => {});
     void deleteRemoteAsset("brand", id, item?.storagePath).catch(() => setAssetError("Quitamos el logo de la vista, pero no pudimos eliminar su copia en Brilla."));
   };
-  const openPortfolio = (testPrivacy = false) => { setLocked(testPrivacy && data.visibility === "password" && Boolean(data.password)); setFinalView(true); };
+  const openPortfolio = () => setFinalView(true);
   const syncMetrics = () => { setSyncing(true); window.setTimeout(() => { setData((current) => ({ ...current, metricSync: true })); setSyncing(false); }, 900); };
   const copyLink = async () => { const link = `${window.location.origin}/${data.portfolioSlug}`; await navigator.clipboard?.writeText(link); setCopied(true); window.setTimeout(() => setCopied(false), 1800); };
   const updateSlug = (value: string) => {
@@ -719,10 +727,6 @@ function PortfolioEditor() {
     setPublishError("");
     if (!user || !cloudReady) {
       setPublishError("Necesitamos terminar de conectar tu cuenta antes de publicar.");
-      return;
-    }
-    if (data.visibility !== "public") {
-      setPublishError("La publicación con contraseña se habilitará en la fase de privacidad. Por ahora selecciona Público.");
       return;
     }
     if (!validPortfolioSlug(data.portfolioSlug)) {
@@ -774,7 +778,6 @@ function PortfolioEditor() {
     }
     setPublishBusy(false);
   };
-  const recordView = () => { const next = views + 1; setViews(next); window.localStorage.setItem("brilla-demo-views", String(next)); if (!data.notifyViews || !("Notification" in window)) return; const notify = () => new Notification("Nueva visita a tu portafolio", { body: `Una marca acaba de abrir el portafolio de ${data.name}.` }); if (Notification.permission === "granted") notify(); else if (Notification.permission === "default") Notification.requestPermission().then((permission) => { if (permission === "granted") notify(); }); };
   const requestStep = (nextStep: number) => {
     if (nextStep <= 1 || user) { setStep(nextStep); return; }
     if (step < 1) { setStep(1); return; }
@@ -799,7 +802,7 @@ function PortfolioEditor() {
       setAuthBusy(false);
     }
   };
-  if (finalView) return <main className="finalDeckMode">{locked ? <PasswordGate name={data.name} password={data.password} onUnlock={() => { setLocked(false); recordView(); }} /> : <><div className="portfolioToolbar"><button onClick={() => setFinalView(false)}>← Editor</button><span>{published ? "↗ Publicado" : data.visibility === "password" ? "◉ Vista privada" : "◉ Vista previa"}</span><button onClick={published ? copyLink : () => { setFinalView(false); setStep(6); }}>{published ? copied ? "Copiado ✓" : "Copiar enlace" : "Ir a publicar"}</button><button onClick={() => window.print()}>Descargar PDF</button></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />}</>}</main>;
+  if (finalView) return <main className="finalDeckMode"><div className="portfolioToolbar"><button onClick={() => setFinalView(false)}>← Editor</button><span>{published ? "↗ Publicado" : "◉ Vista previa"}</span><button onClick={published ? copyLink : () => { setFinalView(false); setStep(6); }}>{published ? copied ? "Copiado ✓" : "Copiar enlace" : "Ir a publicar"}</button><button onClick={() => window.print()}>Descargar PDF</button></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />}</main>;
 
   const statusLabel = assetProcessing > 0
     ? assetProcessing === 1 ? "Preparando 1 archivo…" : `Preparando ${assetProcessing} archivos…`
@@ -818,7 +821,7 @@ function PortfolioEditor() {
   return <main className="builderApp">
     <header className="builderTopbar"><a className="builderBrand" href="/">brilla<span>•</span></a><div className="builderStatus" title={statusHelp}><i className={statusTone} />{statusLabel}</div><div className="builderTopActions"><a href="/cuenta">{checkingAuth ? "Cuenta" : user ? "Cuenta conectada ✓" : "Iniciar sesión"}</a><button className="previewAction" onClick={() => openPortfolio()}>Ver portafolio ↗</button></div></header>
     <div className="builderGrid">
-      <aside className="builderSidebar"><p>TU PORTAFOLIO</p><nav aria-label="Secciones del editor">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => requestStep(index)}><span>{index < step ? "✓" : String(index + 1).padStart(2, "0")}</span><div><small>PASO {String(index + 1).padStart(2, "0")}</small><strong>{item[0]}</strong></div></button>)}</nav><div className="sidebarTip"><b>✦</b><p><strong>Todo incluido</strong>Web, video, métricas, privacidad y PDF. Siempre gratis.</p></div></aside>
+      <aside className="builderSidebar"><p>TU PORTAFOLIO</p><nav aria-label="Secciones del editor">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => requestStep(index)}><span>{index < step ? "✓" : String(index + 1).padStart(2, "0")}</span><div><small>PASO {String(index + 1).padStart(2, "0")}</small><strong>{item[0]}</strong></div></button>)}</nav><div className="sidebarTip"><b>✦</b><p><strong>Todo incluido</strong>Web, video, métricas, alertas y PDF. Siempre gratis.</p></div></aside>
       <section className="builderFormArea">
         <div className="mobileProgress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
         <div className="formHeading"><span>{String(step + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
@@ -829,7 +832,7 @@ function PortfolioEditor() {
         {step === 3 && <div className="formPanel"><div className={`syncCard ${data.metricSync ? "connected" : ""}`}><div><span>{data.metricSync ? "✓" : "↻"}</span><div><strong>{data.metricSync ? "Métricas conectadas" : "Conecta tus métricas"}</strong><small>{data.metricSync ? "Instagram y TikTok · actualización automática activa" : "Mantén seguidores y alcance al día sin editar tu diseño."}</small></div></div><button onClick={syncMetrics} disabled={syncing || data.metricSync}>{syncing ? "Conectando…" : data.metricSync ? "Conectado" : "Conectar redes"}</button></div><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} /><div className="metricPreview"><span><b>{data.womenAudience}</b><small>Mujeres</small></span><div><strong>{data.followers}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews}</strong><small>vistas mensuales</small></div></div></div>}
         {step === 4 && <div className="formPanel"><Choice title="Cada video UGC incluye" options={includeOptions} selected={data.includes} toggle={(v) => toggle("includes", v)} services /><div className="twoFields"><Field label="Video UGC" value={data.videoRate} set={(v) => update("videoRate", v)} placeholder="$350.000 COP" /><Field label="Reel en colaboración" value={data.collabRate} set={(v) => update("collabRate", v)} placeholder="$400.000 COP" /><Field label="1 historia con CTA" value={data.storyRate} set={(v) => update("storyRate", v)} placeholder="$80.000 COP" /><Field label="Pack 3 historias" value={data.storyPackRate} set={(v) => update("storyPackRate", v)} placeholder="$210.000 COP" /></div><Field label="Derechos de pauta por mes" value={data.usageRate} set={(v) => update("usageRate", v)} placeholder="$80.000 COP / mes" /></div>}
         {step === 5 && <div className="formPanel">{schema.contactVisual && <AssetSlot title="Visual de cierre" text="Aparece en la última lámina de esta plantilla." media={contactVisual} accept="image/*,video/*" onChange={(event) => uploadSpecial("__contact", event)} onRemove={() => contactVisual && remove(contactVisual.id)} />}<Choice title="Tipos de contenido" options={contentOptions} selected={data.contentTypes} toggle={(v) => toggle("contentTypes", v)} services /><div className="twoFields"><Field label="Correo" type="email" value={data.email} set={(v) => update("email", v)} placeholder="hola@tucorreo.com" /><Field label="WhatsApp" value={data.whatsapp} set={(v) => update("whatsapp", v)} placeholder="+57 300 000 0000" /><Field label="Instagram" value={data.instagram} set={(v) => update("instagram", v)} placeholder="@tuusuario" /><Field label="TikTok" value={data.tiktok} set={(v) => update("tiktok", v)} placeholder="@tuusuario" /></div><Field label="Disponibilidad" value={data.availability} set={(v) => update("availability", v)} placeholder="Disponible para campañas" /><Choice title="Servicios ofrecidos" options={serviceOptions} selected={data.services} toggle={(v) => toggle("services", v)} services /><div className="readyCard"><span>✦</span><div><strong>Tu presentación está lista</strong><p>Usa la rueda del mouse, el trackpad, las flechas o desliza para recorrerla.</p></div></div></div>}
-        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div><div className="privacyChoices"><button className={data.visibility === "public" ? "selected" : ""} onClick={() => { if (published) setPublicationStatus("draft"); update("visibility", "public"); }}><span>↗</span><strong>Público</strong><small>Cualquiera con el enlace puede verlo.</small></button><button className={data.visibility === "password" ? "selected" : ""} onClick={() => { if (published) setPublicationStatus("draft"); update("visibility", "password"); }}><span>◉</span><strong>Con contraseña</strong><small>Se habilitará en la siguiente fase.</small></button></div>{data.visibility === "password" && <Field label="Contraseña de acceso" type="password" value={data.password} set={(v) => update("password", v)} placeholder="Escribe una clave segura" />}{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => setData((current) => ({ ...current, notifyViews: value }))} title="Alertas de visualización" text="Recibe un aviso cuando una marca abra tu portafolio." /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización registrada" : "visualizaciones registradas"}</strong><small>Prueba el acceso privado para verificar el aviso en tiempo real.</small></p></div><div className="publishTools"><button onClick={() => openPortfolio(data.visibility === "password")}><span>◉</span><strong>Probar privacidad</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => { openPortfolio(); window.setTimeout(() => window.print(), 350); }}><span>↓</span><strong>Media kit PDF</strong><small>Descarga una versión bien maquetada</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : "Publícalo cuando quieras. Tu borrador permanece guardado."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking"}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
+        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => setData((current) => ({ ...current, notifyViews: value }))} title="Alertas de visualización" text="Recibe un aviso cuando una marca abra tu portafolio." /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización registrada" : "visualizaciones registradas"}</strong><small>Abre la vista previa para comprobar la experiencia de una marca.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span>↗</span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => { openPortfolio(); window.setTimeout(() => window.print(), 350); }}><span>↓</span><strong>Media kit PDF</strong><small>Descarga una versión bien maquetada</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : "Publícalo cuando quieras. Tu borrador permanece guardado."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking"}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
         <div className="builderActions"><button className="backButton" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => requestStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton" onClick={() => openPortfolio()}>Ver portafolio <span>↗</span></button>}</div>
       </section>
       <aside className="livePreview"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>{data.format === "website" ? "Página web · cambios en vivo" : "Presentación horizontal · cambios en vivo"}</strong></div><small>{data.format === "website" ? "Scroll ↓" : "Desliza →"}</small></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} />}</aside>
@@ -842,7 +845,6 @@ function Field({ label, value, set, placeholder, type = "text" }: { label: strin
 function TextArea({ label, value, set }: { label: string; value: string; set: (v: string) => void }) { return <label className="builderField"><span>{label}</span><textarea value={value} onChange={(e) => set(e.target.value)} /></label>; }
 function AssetSlot({ title, text, media, accept, onChange, onRemove }: { title: string; text: string; media: Media | null; accept: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; onRemove: () => void }) { return <div className={`assetSlot ${media ? "filled" : ""}`}>{media && <div className="assetSlotPreview">{media.type === "video" ? <video src={media.url} poster={media.previewUrl} muted playsInline /> : <img src={media.url} alt={title} />}</div>}<div><strong>{media ? media.name : title}</strong><small>{media ? `${title} · listo` : text}</small></div><label><input type="file" accept={accept} onChange={onChange} />{media ? "Cambiar" : "Subir archivo"}</label>{media && <button onClick={onRemove} aria-label={`Eliminar ${title}`}>×</button>}</div>; }
 function ToggleRow({ checked, set, title, text }: { checked: boolean; set: (value: boolean) => void; title: string; text: string }) { return <label className="toggleRow"><div><strong>{title}</strong><small>{text}</small></div><input aria-label={title} type="checkbox" checked={checked} onChange={(event) => set(event.target.checked)} /><i aria-hidden="true" /></label>; }
-function PasswordGate({ name, password, onUnlock }: { name: string; password: string; onUnlock: () => void }) { const [value, setValue] = useState(""); const [error, setError] = useState(false); const submit = () => { if (value === password) onUnlock(); else setError(true); }; return <section className="passwordGate"><div className="gateBrand">brilla<span>•</span></div><div className="gateCard"><span className="gateLock">◉</span><small>PORTAFOLIO PRIVADO</small><h1>{name} compartió este portafolio contigo.</h1><p>Ingresa la contraseña que recibiste para verlo.</p><label><span>Contraseña</span><input type="password" value={value} onChange={(event) => { setValue(event.target.value); setError(false); }} onKeyDown={(event) => { if (event.key === "Enter") submit(); }} placeholder="••••••••" /></label>{error && <em>La contraseña no coincide. Inténtalo de nuevo.</em>}<button onClick={submit}>Abrir portafolio ↗</button></div><p>Protegido por Brilla UGC</p></section>; }
 function Choice({ title, options, selected, toggle, services = false }: { title: string; options: string[]; selected: string[]; toggle: (v: string) => void; services?: boolean }) { return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i>{selected.includes(option) ? "✓" : "+"}</i>{option}</button>)}</div></div>; }
 function Theme({ name, note, mode, font, defaultFont, current, choose }: { name: string; note: string; mode: string; font: string; defaultFont: string; current: string; choose: (mode: string, fontStyle: string) => void }) { return <button className={current === mode ? "selected" : ""} onClick={() => choose(mode, defaultFont)}><i className={`themePreview ${mode}`}><b>{name}</b><em>Aa</em><u /></i><strong>{name}</strong><small>{note}</small><span>{templateSchemas[mode].label} · {font}</span></button>; }
 
