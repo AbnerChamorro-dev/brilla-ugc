@@ -43,11 +43,20 @@ test("keeps Google auth and durable portfolio storage wired safely", async () =>
   assert.match(editor, /Cuenta conectada/);
   assert.match(account, /Continuar con Google/);
   assert.doesNotMatch(account, /signInWithPassword|signUp\(|resetPasswordForEmail/);
+  assert.match(account, /PANEL DE LA CREADORA/);
+  assert.match(account, /from\("creator_portfolios"\)[\s\S]*select\("id,content,status,slug,created_at,updated_at"\)/);
+  assert.match(account, /from\("creator_media"\)[\s\S]*count:\s*"exact"/);
+  assert.match(account, /update\(\{ status: "unpublished" \}\)/);
+  assert.match(account, /from\("creator_portfolios"\)\.delete\(\)\.eq\("user_id", user\.id\)/);
+  assert.match(account, /storage\.from\("creator-media"\)\.remove\(paths\)/);
+  assert.match(account, /deleteConfirmation !== "ELIMINAR"/);
+  assert.match(account, /La analítica llegará en la fase 6/);
 
   assert.match(migration, /alter table public\.creator_portfolios enable row level security/i);
   assert.match(migration, /for insert[\s\S]*with check \(\(select auth\.uid\(\)\) = user_id\)/i);
   assert.match(migration, /for update[\s\S]*using \(\(select auth\.uid\(\)\) = user_id\)[\s\S]*with check \(\(select auth\.uid\(\)\) = user_id\)/i);
   assert.match(migration, /revoke all on table public\.creator_portfolios from anon, authenticated/i);
+  assert.match(migration, /for delete[\s\S]*using \(\(select auth\.uid\(\)\) = user_id\)/i);
 
   await assert.rejects(access(new URL("../app/_sites-preview", import.meta.url)));
 });

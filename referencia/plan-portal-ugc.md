@@ -163,9 +163,20 @@ Guardar permanentemente:
 - Botones para editar, ver y copiar el enlace.
 - Fecha de última actualización.
 - Visitas totales y clics principales.
-- Acciones para duplicar, despublicar o eliminar.
+- Acciones para despublicar o eliminar.
 
 **Criterio de finalización:** la creadora puede administrar su portafolio sin recorrer nuevamente todo el editor.
+
+**Avance al 5 de septiembre de 2026:**
+
+- `/cuenta` funciona como panel real después de iniciar sesión con Google.
+- Muestra el estado de publicación, la plantilla elegida, el enlace, la fecha de actualización y la cantidad de archivos guardados.
+- Calcula el avance del perfil usando identidad, contenido, métricas declaradas, tarifas, contacto y enlace.
+- Permite editar, abrir la vista pública y copiar el enlace cuando el portafolio está publicado.
+- Despublicar actualiza el estado real en Supabase y conserva todo el contenido para volver a publicarlo.
+- Eliminar exige escribir `ELIMINAR`, borra los archivos privados, sus metadatos, el portafolio y la copia local del dispositivo; la cuenta de Google permanece activa.
+- Las visitas se presentan como “Próximamente” hasta que exista analítica real en la Fase 6.
+- El duplicado queda fuera del MVP actual porque la base de datos admite un portafolio por creadora; se retomará con soporte para múltiples portafolios.
 
 ### Fase 6 — Analítica y notificaciones
 
@@ -261,4 +272,4 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 ## Próximo hito
 
-Implementar el **panel de la creadora** para administrar el portafolio publicado, consultar su estado y acceder rápidamente a sus acciones principales.
+Implementar **analítica y notificaciones** para registrar visitas y clics reales sin prometer la identidad de cada visitante.
