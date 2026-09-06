@@ -1,0 +1,9 @@
+.consent { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; margin: 16px 0; padding: 14px; border: 1px solid #dcd6ea; border-radius: 14px; color: #625c76; background: #faf9ff; }
+.consent > input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.consent > label { display: contents; cursor: pointer; }
+.consent > label > span:first-child { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid #aaa1c5; border-radius: 6px; color: #17132f; background: #fff; font-size: 12px; font-weight: 900; }
+.consent > input:checked + label > span:first-child { border-color: #53e0bd; background: #70f0cf; }
+.consent > input:focus-visible + label > span:first-child { outline: 3px solid #6d4dff33; outline-offset: 2px; }
+.consent > label > span:last-child { font-size: 11px; line-height: 1.55; }
+.consent a { color: #5637c9; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
+.consent a:hover { color: #332477; }

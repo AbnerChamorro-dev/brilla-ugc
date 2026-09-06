@@ -1,0 +1,1 @@
+drop index if exists public.creator_legal_consents_user_accepted_idx;

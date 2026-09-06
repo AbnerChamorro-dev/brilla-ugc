@@ -5,6 +5,14 @@
 
 import { CSSProperties, useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
+import { LegalConsentGate } from "../components/legal-consent-gate";
+import {
+  clearPendingLegalConsent,
+  markLegalConsentPending,
+  recordCurrentLegalConsent,
+  resolveCurrentLegalConsent,
+} from "../lib/legal-consent";
 import { getSupabaseBrowserClient } from "../lib/supabase";
 import "./cuenta.css";
 
@@ -38,6 +46,19 @@ type CreatorPortfolio = {
   updated_at: string;
 };
 
+type PortfolioAnalytics = {
+  total_views: number;
+  unique_visitors: number;
+  views_last_30_days: number;
+  last_view_at: string | null;
+  clicks: { email: number; whatsapp: number; instagram: number; tiktok: number };
+};
+
+type NotificationPreferences = {
+  email_digest_enabled: boolean;
+  digest_frequency: "daily" | "weekly";
+};
+
 type ConfirmAction = "unpublish" | "delete" | null;
 
 const localPortfolioKeys = [
@@ -47,6 +68,32 @@ const localPortfolioKeys = [
   "brilla-published-v1",
   "brilla-demo-views",
 ];
+
+const emptyAnalytics: PortfolioAnalytics = {
+  total_views: 0,
+  unique_visitors: 0,
+  views_last_30_days: 0,
+  last_view_at: null,
+  clicks: { email: 0, whatsapp: 0, instagram: 0, tiktok: 0 },
+};
+
+function normalizedAnalytics(value: unknown): PortfolioAnalytics {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return emptyAnalytics;
+  const analytics = value as Partial<PortfolioAnalytics>;
+  const clicks = analytics.clicks && typeof analytics.clicks === "object" ? analytics.clicks : emptyAnalytics.clicks;
+  return {
+    total_views: Number(analytics.total_views) || 0,
+    unique_visitors: Number(analytics.unique_visitors) || 0,
+    views_last_30_days: Number(analytics.views_last_30_days) || 0,
+    last_view_at: typeof analytics.last_view_at === "string" ? analytics.last_view_at : null,
+    clicks: {
+      email: Number(clicks.email) || 0,
+      whatsapp: Number(clicks.whatsapp) || 0,
+      instagram: Number(clicks.instagram) || 0,
+      tiktok: Number(clicks.tiktok) || 0,
+    },
+  };
+}
 
 function safeNextPath() {
   if (typeof window === "undefined") return "/cuenta";
@@ -101,6 +148,10 @@ export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [portfolio, setPortfolio] = useState<CreatorPortfolio | null>(null);
   const [mediaCount, setMediaCount] = useState(0);
+  const [analytics, setAnalytics] = useState<PortfolioAnalytics>(emptyAnalytics);
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({ email_digest_enabled: false, digest_frequency: "weekly" });
+  const [notificationPreferencesExist, setNotificationPreferencesExist] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
   const [checking, setChecking] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -109,12 +160,17 @@ export default function AccountPage() {
   const [copied, setCopied] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [loginConsentChecked, setLoginConsentChecked] = useState(false);
+  const [legalConsentRequired, setLegalConsentRequired] = useState(false);
+  const [authenticatedConsentChecked, setAuthenticatedConsentChecked] = useState(false);
+  const [legalBusy, setLegalBusy] = useState(false);
+  const [legalError, setLegalError] = useState("");
 
   const loadDashboard = useCallback(async (account: User) => {
     setDashboardLoading(true);
     setError("");
     const supabase = getSupabaseBrowserClient();
-    const [portfolioResult, mediaResult] = await Promise.all([
+    const [portfolioResult, mediaResult, analyticsResult, preferencesResult] = await Promise.all([
       supabase
         .from("creator_portfolios")
         .select("id,content,status,slug,created_at,updated_at")
@@ -124,13 +180,23 @@ export default function AccountPage() {
         .from("creator_media")
         .select("id", { count: "exact", head: true })
         .eq("user_id", account.id),
+      supabase.rpc("get_my_portfolio_analytics"),
+      supabase
+        .from("creator_notification_preferences")
+        .select("email_digest_enabled,digest_frequency")
+        .eq("user_id", account.id)
+        .maybeSingle(),
     ]);
 
-    if (portfolioResult.error || mediaResult.error) {
+    if (portfolioResult.error || mediaResult.error || analyticsResult.error || preferencesResult.error) {
       setError("No pudimos cargar tu panel. Tu portafolio sigue seguro; inténtalo nuevamente.");
     } else {
       setPortfolio((portfolioResult.data as CreatorPortfolio | null) ?? null);
       setMediaCount(mediaResult.count ?? 0);
+      setAnalytics(normalizedAnalytics(analyticsResult.data));
+      const savedPreferences = preferencesResult.data as NotificationPreferences | null;
+      setNotificationPreferences(savedPreferences ?? { email_digest_enabled: false, digest_frequency: "weekly" });
+      setNotificationPreferencesExist(Boolean(savedPreferences));
     }
     setDashboardLoading(false);
   }, []);
@@ -144,13 +210,38 @@ export default function AccountPage() {
       setError("La comprobación de tu sesión tardó demasiado. Puedes intentarlo nuevamente.");
     }, 8000);
 
+    const clearAccount = () => {
+      setUser(null);
+      setChecking(false);
+      setLegalConsentRequired(false);
+      setPortfolio(null);
+      setMediaCount(0);
+      setAnalytics(emptyAnalytics);
+      setNotificationPreferences({ email_digest_enabled: false, digest_frequency: "weekly" });
+      setNotificationPreferencesExist(false);
+    };
+
+    const acceptAccount = async (account: User) => {
+      setUser(account);
+      const consent = await resolveCurrentLegalConsent(supabase, account.id);
+      if (!active) return;
+      setChecking(false);
+      if (!consent.accepted) {
+        setLegalConsentRequired(true);
+        setLegalError(consent.error ? "No pudimos comprobar tu autorización. Revisa tu conexión e inténtalo nuevamente." : "");
+        return;
+      }
+      setLegalConsentRequired(false);
+      setLegalError("");
+      void loadDashboard(account);
+    };
+
     void (async () => {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (!active) return;
       if (sessionError || !sessionData.session) {
         window.clearTimeout(initialTimer);
-        setUser(null);
-        setChecking(false);
+        clearAccount();
         if (sessionError) setError("No pudimos comprobar tu sesión. Vuelve a iniciar sesión.");
         return;
       }
@@ -159,10 +250,9 @@ export default function AccountPage() {
       if (!active) return;
       window.clearTimeout(initialTimer);
       const account = data.user ?? null;
-      setUser(account);
-      setChecking(false);
       if (authError) setError("No pudimos comprobar tu sesión. Vuelve a iniciar sesión.");
-      if (account) void loadDashboard(account);
+      if (account) await acceptAccount(account);
+      else clearAccount();
     })().catch(() => {
       if (!active) return;
       window.clearTimeout(initialTimer);
@@ -173,13 +263,8 @@ export default function AccountPage() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       const account = session?.user ?? null;
-      setUser(account);
-      setChecking(false);
-      if (account) void loadDashboard(account);
-      else {
-        setPortfolio(null);
-        setMediaCount(0);
-      }
+      if (account) void acceptAccount(account);
+      else clearAccount();
     });
 
     return () => {
@@ -190,8 +275,13 @@ export default function AccountPage() {
   }, [loadDashboard]);
 
   const signInWithGoogle = async () => {
+    if (!loginConsentChecked) {
+      setError("Debes autorizar el tratamiento de datos y aceptar los Términos antes de continuar.");
+      return;
+    }
     setBusy(true);
     setError("");
+    markLegalConsentPending();
     const next = safeNextPath();
     const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
@@ -199,6 +289,7 @@ export default function AccountPage() {
     });
 
     if (authError) {
+      clearPendingLegalConsent();
       setError(
         authError.message.toLowerCase().includes("provider")
           ? "El acceso con Google todavía no está habilitado."
@@ -211,10 +302,53 @@ export default function AccountPage() {
   const signOut = async () => {
     setBusy(true);
     await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
+    clearPendingLegalConsent();
     setUser(null);
     setPortfolio(null);
     setMediaCount(0);
+    setAnalytics(emptyAnalytics);
+    setNotificationPreferences({ email_digest_enabled: false, digest_frequency: "weekly" });
+    setNotificationPreferencesExist(false);
+    setLegalConsentRequired(false);
+    setAuthenticatedConsentChecked(false);
+    setLoginConsentChecked(false);
+    setLegalError("");
     setBusy(false);
+  };
+
+  const acceptAuthenticatedConsent = async () => {
+    if (!user || !authenticatedConsentChecked) return;
+    setLegalBusy(true);
+    setLegalError("");
+    const result = await recordCurrentLegalConsent(getSupabaseBrowserClient(), user.id, "authenticated_prompt");
+    if (!result.accepted) {
+      setLegalError("No pudimos guardar tu autorización. Revisa tu conexión e inténtalo nuevamente.");
+    } else {
+      setLegalConsentRequired(false);
+      setAuthenticatedConsentChecked(false);
+      void loadDashboard(user);
+    }
+    setLegalBusy(false);
+  };
+
+  const saveNotificationPreferences = async (next: NotificationPreferences) => {
+    if (!user) return;
+    setNotificationBusy(true);
+    setError("");
+    setSuccess("");
+    const supabase = getSupabaseBrowserClient();
+    const result = notificationPreferencesExist
+      ? await supabase.from("creator_notification_preferences").update(next).eq("user_id", user.id)
+      : await supabase.from("creator_notification_preferences").insert({ user_id: user.id, ...next });
+
+    if (result.error) {
+      setError("No pudimos guardar tu preferencia de notificaciones. Inténtalo nuevamente.");
+    } else {
+      setNotificationPreferences(next);
+      setNotificationPreferencesExist(true);
+      setSuccess("Tu preferencia de actividad quedó guardada.");
+    }
+    setNotificationBusy(false);
   };
 
   const copyPublishedLink = async () => {
@@ -293,6 +427,7 @@ export default function AccountPage() {
     clearLocalPortfolio();
     setPortfolio(null);
     setMediaCount(0);
+    setAnalytics(emptyAnalytics);
     setConfirmAction(null);
     setDeleteConfirmation("");
     setSuccess("Tu portafolio y sus archivos fueron eliminados. Tu cuenta de Google continúa activa.");
@@ -301,6 +436,10 @@ export default function AccountPage() {
 
   if (checking) {
     return <main className="accountLoadingPage"><a className="accountBrand" href="/">brilla<span>•</span></a><div className="accountLoading"><i />Preparando tu espacio…</div></main>;
+  }
+
+  if (user && legalConsentRequired) {
+    return <main className="accountLoadingPage"><a className="accountBrand" href="/">brilla<span>•</span></a><LegalConsentGate checked={authenticatedConsentChecked} busy={legalBusy} error={legalError} onCheckedChange={setAuthenticatedConsentChecked} onAccept={() => void acceptAuthenticatedConsent()} onSignOut={() => void signOut()} /></main>;
   }
 
   if (!user) {
@@ -315,9 +454,10 @@ export default function AccountPage() {
         <span className="accountKicker">UN ACCESO, CERO COMPLICACIONES</span><h2>Continúa con Google.</h2><p className="accountLead">No necesitas crear otra contraseña. Usaremos tu cuenta de Google únicamente para identificarte y proteger tu portafolio.</p>
         <div className="accountProgressPromise"><span>✓</span><p><strong>No perderás tu progreso</strong><small>Cuando vuelvas, continuarás exactamente donde quedaste.</small></p></div>
         {error && <p className="accountNotice error" role="alert">{error}</p>}
-        <button className="googleAccountButton" type="button" onClick={signInWithGoogle} disabled={busy}><b>G</b>{busy ? "Abriendo Google…" : "Continuar con Google"}<span>→</span></button>
+        <LegalConsentCheckbox id="account-login-legal-consent" checked={loginConsentChecked} onChange={setLoginConsentChecked} />
+        <button className="googleAccountButton" type="button" onClick={signInWithGoogle} disabled={busy || !loginConsentChecked}><b>G</b>{busy ? "Abriendo Google…" : "Continuar con Google"}<span>→</span></button>
         <a className="accountBackLink" href="/crear">Volver al editor</a>
-        <p className="accountLegal">Google compartirá con Brilla tu nombre, correo y foto de perfil. No tendremos acceso a tu contraseña.</p>
+        <p className="accountLegal">Google compartirá con Brilla tu nombre, correo y foto de perfil para identificar tu cuenta. No tendremos acceso a tu contraseña.</p>
       </div></section>
     </main>;
   }
@@ -382,7 +522,25 @@ export default function AccountPage() {
           <article><span>ESTADO</span><strong>{statusLabel}</strong><small>{isPublished ? "Visible para cualquier marca con el enlace" : "Solo tú puedes acceder por ahora"}</small></article>
           <article><span>CONTENIDO</span><strong>{mediaCount}</strong><small>{mediaCount === 1 ? "archivo en tu portafolio" : "archivos en tu portafolio"}</small></article>
           <article><span>ACTUALIZADO</span><strong>{formattedDate(portfolio.updated_at).split(",")[0]}</strong><small>{formattedDate(portfolio.updated_at)}</small></article>
-          <article className="analyticsSoon"><span>VISITAS REALES</span><strong>Próximamente</strong><small>La analítica llegará en la fase 6</small></article>
+          <article className="analyticsLive"><span>VISITAS REALES</span><strong>{analytics.total_views}</strong><small>{analytics.unique_visitors} {analytics.unique_visitors === 1 ? "visitante aproximado" : "visitantes aproximados"}</small></article>
+        </section>
+
+        <section className="analyticsPanel" aria-labelledby="analytics-title">
+          <header><div><span>✦ ACTIVIDAD REAL</span><h2 id="analytics-title">Lo que hacen las marcas.</h2><p>Brilla cuenta actividad anónima y evita repetir una misma acción durante 30 minutos.</p></div><div><small>ÚLTIMA VISITA</small><strong>{formattedDate(analytics.last_view_at ?? undefined)}</strong></div></header>
+          <div className="analyticsCards">
+            <article><span>30 DÍAS</span><strong>{analytics.views_last_30_days}</strong><small>visitas al portafolio</small></article>
+            <article><span>CORREO</span><strong>{analytics.clicks.email}</strong><small>clics para escribirte</small></article>
+            <article><span>WHATSAPP</span><strong>{analytics.clicks.whatsapp}</strong><small>clics para conversar</small></article>
+            <article><span>INSTAGRAM</span><strong>{analytics.clicks.instagram}</strong><small>visitas desde tu enlace</small></article>
+            <article><span>TIKTOK</span><strong>{analytics.clicks.tiktok}</strong><small>visitas desde tu enlace</small></article>
+          </div>
+          <div className="notificationPreferences">
+            <div><span>RESUMEN DE ACTIVIDAD</span><h3>Decide cómo quieres recibirlo.</h3><p>Recibirás un resumen solo cuando haya actividad nueva. Los diarios salen cada mañana y los semanales, los lunes.</p></div>
+            <div className="notificationControls">
+              <label className="notificationToggle"><span><strong>Resumen por correo</strong><small>{notificationPreferences.email_digest_enabled ? "Preferencia activada" : "Preferencia desactivada"}</small></span><input aria-label="Activar resumen de actividad por correo" type="checkbox" checked={notificationPreferences.email_digest_enabled} disabled={notificationBusy} onChange={(event) => void saveNotificationPreferences({ ...notificationPreferences, email_digest_enabled: event.target.checked })} /><i aria-hidden="true" /></label>
+              <label className="notificationFrequency"><span>Frecuencia preferida</span><select value={notificationPreferences.digest_frequency} disabled={notificationBusy || !notificationPreferences.email_digest_enabled} onChange={(event) => void saveNotificationPreferences({ ...notificationPreferences, digest_frequency: event.target.value as NotificationPreferences["digest_frequency"] })}><option value="weekly">Semanal</option><option value="daily">Diaria</option></select></label>
+            </div>
+          </div>
         </section>
 
         <section className="dashboardManagement">

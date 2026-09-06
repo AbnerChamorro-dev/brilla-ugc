@@ -18,18 +18,14 @@ El portal para empresas queda fuera de esta etapa. La información se organizar�
 - Vista previa del portafolio.
 - Campos de identidad, audiencia, servicios, tarifas y contacto.
 - Controles de publicación y vista previa.
-- Impresión básica como PDF.
+- Media kit PDF descargable y maquetado en tamaño A4.
 - Diseño adaptable a móvil y computador.
 
-### Funciones que todavía son locales o demostrativas
+### Funciones pendientes o aplazadas
 
-- Los datos del portafolio se guardan en el navegador.
-- Los archivos se guardan en el dispositivo mediante almacenamiento local.
-- El botón de publicación no crea todavía una página pública real.
-- El enlace copiado vuelve al editor y no a un portafolio independiente.
-- La sincronización de métricas es simulada.
-- Las visualizaciones y notificaciones no provienen de visitas externas reales.
-- El PDF depende de la función de impresión del navegador.
+- La conexión automática con Instagram está aplazada; las métricas sociales se ingresan manualmente.
+- La exportación de datos, el cierre integral de cuenta, el registro administrativo y las copias de seguridad se completarán en la Fase 9.
+- La revisión integral de accesibilidad, dispositivos, rendimiento y lanzamiento corresponde a la Fase 10.
 
 ## Alcance del lanzamiento inicial
 
@@ -74,7 +70,7 @@ Una creadora deberá poder:
 - URL de retorno de producción configurada.
 - URLs de retorno locales (`localhost:3000`, `3001` y `3002`) y de producción registradas en Supabase.
 
-El SMTP no es necesario para el acceso porque la autenticación será exclusivamente con Google. Se conserva como trabajo posterior para correos transaccionales y alertas de la plataforma.
+El SMTP no es necesario para el acceso porque la autenticación es exclusivamente con Google. Las comunicaciones transaccionales se procesan mediante Resend y funciones privadas de Supabase.
 
 ### Fase 2 — Base de datos
 
@@ -175,7 +171,7 @@ Guardar permanentemente:
 - Permite editar, abrir la vista pública y copiar el enlace cuando el portafolio está publicado.
 - Despublicar actualiza el estado real en Supabase y conserva todo el contenido para volver a publicarlo.
 - Eliminar exige escribir `ELIMINAR`, borra los archivos privados, sus metadatos, el portafolio y la copia local del dispositivo; la cuenta de Google permanece activa.
-- Las visitas se presentan como “Próximamente” hasta que exista analítica real en la Fase 6.
+- Las visitas y los clics del panel ya provienen de la analítica privada implementada en la Fase 6.
 - El duplicado queda fuera del MVP actual porque la base de datos admite un portafolio por creadora; se retomará con soporte para múltiples portafolios.
 
 ### Fase 6 — Analítica y notificaciones
@@ -189,9 +185,24 @@ Guardar permanentemente:
 
 **Criterio de finalización:** las cifras del panel provienen de actividad real y no de una simulación local.
 
+**Avance al 6 de septiembre de 2026:**
+
+- Las páginas públicas registran visitas reales y clics en correo, WhatsApp, Instagram y TikTok.
+- Cada navegador recibe un identificador aleatorio anónimo; Brilla no guarda el nombre, correo, perfil social ni dirección IP del visitante.
+- Las recargas y acciones repetidas se deduplican en ventanas de 30 minutos para reducir cifras infladas.
+- Los eventos crudos permanecen en un esquema privado y no son consultables desde el navegador.
+- El panel muestra visitas totales, visitantes aproximados, visitas de los últimos 30 días, última visita y clics por canal.
+- La creadora puede guardar si desea un resumen por correo y elegir una frecuencia diaria o semanal.
+- El historial se elimina automáticamente al borrar el portafolio.
+- La cola privada de resúmenes ya está aplicada: separa envíos diarios y semanales, evita duplicados, admite trabajo concurrente y reintenta fallos hasta tres veces.
+- La función de envío mediante Resend está desplegada con plantillas HTML y texto, métricas agregadas e idempotencia por entrega.
+- Resend está configurado mediante secretos privados y el proceso automático se ejecuta cada día a las 08:00 de Colombia; los resúmenes semanales se generan únicamente los lunes.
+
 ### Fase 7 — Conexión opcional con Instagram
 
 Esta integración se desarrollará después de que cuentas, base de datos, publicación y analítica propia estén funcionando. No será un requisito para crear o publicar un portafolio.
+
+**Estado al 6 de septiembre de 2026: pendiente y aplazada.** Brilla continuará con la Fase 8 mientras se preparan la aplicación de Meta, la verificación del negocio, los permisos de Instagram Graph API y la revisión para acceso avanzado. Los campos manuales existentes permanecen como alternativa funcional.
 
 - Mantener campos manuales para todas las creadoras.
 - Permitir conexión únicamente mediante la API oficial de Meta.
@@ -212,6 +223,8 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 ### Fase 8 — PDF y comunicación
 
+**Estado al 6 de septiembre de 2026: completada.**
+
 - PDF consistente para cada plantilla.
 - Correos de bienvenida.
 - Confirmación de publicación.
@@ -219,7 +232,22 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 **Criterio de finalización:** las comunicaciones esenciales y la descarga funcionan sin depender de pasos manuales.
 
+**Avance al 6 de septiembre de 2026:**
+
+- El botón del editor genera y descarga un PDF real; ya no abre el diálogo de impresión del navegador.
+- El media kit adapta el color y la identidad de la plantilla elegida e incluye portada, perfil, audiencia, portafolio, servicios, tarifas y contacto.
+- Las imágenes y portadas de video disponibles se convierten para incrustarlas en el archivo; una imagen que no pueda descargarse no bloquea el resto del documento.
+- Se validaron visualmente cinco páginas A4 en formatos web y presentacional, además de comprobar metadatos y contenido extraíble.
+- Los resúmenes de actividad por correo ya funcionan como parte de la Fase 6.
+- La propietaria autorizó a Brilla a procesar mediante Resend el correo, nombre visible y enlace público necesarios para la bienvenida y la confirmación de publicación.
+- El correo de bienvenida se encola solo al crear una cuenta nueva y la confirmación solo en la primera publicación de cada portafolio; ambos usan una cola privada, idempotencia y hasta tres intentos.
+- La función `send-transactional-emails` está activa y el cron revisa la cola cada minuto; la llamada de verificación respondió correctamente con HTTP 200.
+- No se generó un envío retroactivo para las cuentas ni los portafolios que ya existían al activar esta función.
+- Queda pendiente definir cuáles avisos de seguridad adicionales son esenciales para el MVP; este trabajo se resolverá junto con la Fase 9.
+
 ### Fase 9 — Seguridad, privacidad y control
+
+**Estado al 6 de septiembre de 2026: en curso. Política, términos y consentimiento completados.**
 
 - Política de privacidad y términos de uso.
 - Consentimiento para datos personales y analítica no esencial.
@@ -228,6 +256,15 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 - Exportación y eliminación de datos de la cuenta.
 - Registro de eventos administrativos importantes.
 - Copias de seguridad y recuperación.
+
+**Avance al 6 de septiembre de 2026:**
+
+- Se publicaron la Política de Tratamiento de Datos y los Términos de Uso con la identidad y los canales de TECNOLOGYC S.A.S.
+- Los dos puntos de acceso con Google exigen una autorización previa, expresa e informada mediante una casilla inicialmente desmarcada.
+- El botón de Google permanece deshabilitado hasta que la creadora marque la autorización; las políticas se abren antes de decidir.
+- La prueba se registra con usuario, versiones, texto exacto, método y hora del servidor en una tabla con RLS y sin permisos de actualización o eliminación para el cliente.
+- Las sesiones creadas antes de esta implementación quedan bloqueadas por una solicitud autenticada hasta aceptar la versión vigente o cerrar sesión.
+- Permanecen pendientes en esta fase: consentimiento separado para analítica no esencial si se incorpora, exportación y cierre integral de cuenta, registro administrativo, recuperación y pruebas específicas de abuso.
 
 **Criterio de finalización:** una creadora puede entender, controlar y eliminar la información que Brilla conserva.
 
@@ -272,4 +309,4 @@ Esta integración se desarrollará después de que cuentas, base de datos, publi
 
 ## Próximo hito
 
-Implementar **analítica y notificaciones** para registrar visitas y clics reales sin prometer la identidad de cada visitante.
+Completar la **Fase 9 — seguridad, privacidad y control**, empezando por política de privacidad, términos, consentimiento y exportación de datos.

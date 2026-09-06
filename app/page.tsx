@@ -155,7 +155,7 @@ export default function Home() {
 
       <section className="finalCta shell"><span className="ctaSpark">✦</span><p>NO ESPERES A SENTIRTE LISTA</p><h2>Tu próxima colaboración<br />empieza con un <em>link.</em></h2><a className="primaryButton lightButton" href="/crear">Crear mi portafolio <span>↗</span></a></section>
 
-      <footer className="footer shell"><a className="brand" href="#inicio">brilla<span>•</span></a><p>Portafolios que hacen brillar tu talento.</p><div><a href="#como-funciona">Cómo funciona</a><a href="#comparativa">Brilla vs. Canva</a><a href="#portafolios">Plantillas</a></div><small>© 2026 Brilla UGC</small></footer>
+      <footer className="footer shell"><a className="brand" href="#inicio">brilla<span>•</span></a><p>Portafolios que hacen brillar tu talento.</p><div><a href="#como-funciona">Cómo funciona</a><a href="#comparativa">Brilla vs. Canva</a><a href="#portafolios">Plantillas</a><a href="/privacidad">Política de datos</a><a href="/terminos">Términos</a></div><small>© 2026 TECNOLOGYC S.A.S.</small></footer>
     </main>
   );
 }

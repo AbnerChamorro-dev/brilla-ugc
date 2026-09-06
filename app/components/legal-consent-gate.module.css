@@ -1,0 +1,12 @@
+.overlay { position: fixed; z-index: 700; inset: 0; display: grid; place-items: center; padding: 22px; background: #17132fba; backdrop-filter: blur(14px); }
+.card { width: min(540px, 100%); max-height: calc(100vh - 30px); overflow-y: auto; padding: 38px; border: 1px solid #ffffff80; border-radius: 30px; color: #17132f; background: #fff; box-shadow: 0 34px 110px #0a071f70; }
+.mark { display: grid; place-items: center; width: 52px; height: 52px; margin-bottom: 20px; border-radius: 16px; color: #17132f; background: #70f0cf; font: 800 1.25rem var(--font-serif), serif; }
+.card > small { color: #6d4dff; font-size: .62rem; font-weight: 900; letter-spacing: .14em; }
+.card h2 { margin: 10px 0 10px; font: 560 clamp(2.4rem, 6vw, 3.4rem)/.95 var(--font-serif), serif; letter-spacing: -.055em; }
+.card > p { margin: 0; color: #6c6680; font-size: .78rem; line-height: 1.6; }
+.card .error { margin: 10px 0; padding: 11px 13px; border-radius: 12px; color: #8e2848; background: #fff0f4; font-size: .68rem; }
+.accept { width: 100%; padding: 14px 18px; border: 0; border-radius: 999px; color: #fff; background: #211a49; cursor: pointer; font-size: .72rem; font-weight: 850; }
+.accept:disabled { cursor: not-allowed; opacity: .45; }
+.signOut { display: block; margin: 11px auto 0; padding: 8px; border: 0; color: #756e89; background: transparent; cursor: pointer; font-size: .64rem; font-weight: 750; }
+.signOut:disabled { opacity: .5; }
+@media(max-width:600px){.overlay{align-items:end;padding:10px}.card{padding:30px 20px 23px;border-radius:25px}.card h2{font-size:2.6rem}}

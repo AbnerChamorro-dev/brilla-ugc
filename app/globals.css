@@ -207,7 +207,7 @@ h1 em { color: var(--rose); font-weight: 400; }
   .portfolioHeader { align-items: start; flex-direction: column; }
   .template { max-width: 560px; width: 100%; margin: auto; }
   .pricing { gap: 45px; }.priceCards { max-width: 680px; }
-  .footer { grid-template-columns: auto 1fr auto; }.footer > div { display: none; }
+  .footer { grid-template-columns: auto 1fr auto; }.footer > div { grid-column: 1 / -1; flex-wrap: wrap; }
 }
 
 @media (max-width: 560px) {
@@ -228,7 +228,7 @@ h1 em { color: var(--rose); font-weight: 400; }
   .priceCards { grid-template-columns: 1fr; }
   .faq { gap: 45px; padding-bottom: 95px; }
   .finalCta { width: calc(100% - 20px); padding: 75px 20px; border-radius: 28px; }.finalCta h2 { font-size: 3.1rem; }
-  .footer { grid-template-columns: 1fr auto; gap: 15px; }.footer > p { grid-row: 2; }.footer small { grid-column: 2; grid-row: 1; }
+  .footer { grid-template-columns: 1fr auto; gap: 15px; }.footer > p { grid-row: 2; }.footer > div { gap: 14px 20px; }.footer small { grid-column: 2; grid-row: 1; }
 }
 
 /* Product differentiation: creator-first, free and operationally useful. */

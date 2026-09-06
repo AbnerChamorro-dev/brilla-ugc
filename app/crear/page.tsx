@@ -7,6 +7,14 @@
 
 import { ChangeEvent, CSSProperties, PointerEvent, UIEvent, WheelEvent, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
+import { LegalConsentGate } from "../components/legal-consent-gate";
+import {
+  clearPendingLegalConsent,
+  markLegalConsentPending,
+  recordCurrentLegalConsent,
+  resolveCurrentLegalConsent,
+} from "../lib/legal-consent";
 import { getSupabaseBrowserClient } from "../lib/supabase";
 import "./crear.css";
 import "./templates.css";
@@ -266,7 +274,7 @@ const initial: Portfolio = {
   followers: "50.5 mil", monthlyViews: "700.2 K", womenAudience: "82.9%", topCountries: "Colombia 79.2% · Estados Unidos 3.3% · México 3% · España 2.5%",
   videoRate: "$350.000 COP", collabRate: "$400.000 COP", storyRate: "$80.000 COP", storyPackRate: "$210.000 COP", usageRate: "$80.000 COP / mes",
   email: "hola@sofiaugc.com", whatsapp: "+57 314 722 5878", instagram: "@sofia.crea", tiktok: "@sofia.crea", availability: "Disponible para campañas y colaboraciones",
-  notifyViews: true, metricSync: false, portfolioSlug: "sofia-mendoza",
+  notifyViews: false, metricSync: false, portfolioSlug: "sofia-mendoza",
 };
 
 function restorePortfolio(value: unknown): Portfolio {
@@ -295,13 +303,22 @@ function PortfolioEditor() {
   const [publishError, setPublishError] = useState("");
   const [slugState, setSlugState] = useState<SlugState>("idle");
   const [copied, setCopied] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [views, setViews] = useState(0);
+  const [notificationPreferenceExists, setNotificationPreferenceExists] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [authPromptOpen, setAuthPromptOpen] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [loginConsentChecked, setLoginConsentChecked] = useState(false);
+  const [legalConsentRequired, setLegalConsentRequired] = useState(false);
+  const [authenticatedConsentChecked, setAuthenticatedConsentChecked] = useState(false);
+  const [legalReady, setLegalReady] = useState(false);
+  const [legalBusy, setLegalBusy] = useState(false);
+  const [legalError, setLegalError] = useState("");
   const [localDraftReady, setLocalDraftReady] = useState(false);
   const [localAssetsReady, setLocalAssetsReady] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);
@@ -322,7 +339,6 @@ function PortfolioEditor() {
 
   useEffect(() => {
     const draft = window.localStorage.getItem(draftStorageKey);
-    const storedViews = Number(window.localStorage.getItem("brilla-demo-views") ?? 0);
     const timer = window.setTimeout(() => {
       if (draft) {
         try {
@@ -331,7 +347,6 @@ function PortfolioEditor() {
           setData(restored);
         } catch { /* keep defaults */ }
       }
-      setViews(storedViews);
       setLocalDraftReady(true);
       readAssets().then((assets) => {
         localAssetsRef.current = assets;
@@ -346,37 +361,64 @@ function PortfolioEditor() {
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     let active = true;
-    const acceptUser = (nextUser: User | null) => {
+    const acceptUser = async (nextUser: User | null) => {
       if (!active) return;
       setUser(nextUser);
-      setCheckingAuth(false);
       if (!nextUser) {
+        setCheckingAuth(false);
+        setLegalReady(false);
+        setLegalConsentRequired(false);
         setCloudReady(false);
         setCloudSaveState("local");
         assetHydratedForRef.current = "";
         return;
       }
+
+      const consent = await resolveCurrentLegalConsent(supabase, nextUser.id);
+      if (!active) return;
+      setCheckingAuth(false);
+      if (!consent.accepted) {
+        setLegalReady(false);
+        setLegalConsentRequired(true);
+        setLegalError(consent.error ? "No pudimos comprobar tu autorización. Revisa tu conexión e inténtalo nuevamente." : "");
+        setCloudReady(false);
+        setAuthPromptOpen(false);
+        return;
+      }
+
+      setLegalReady(true);
+      setLegalConsentRequired(false);
+      setLegalError("");
       const pendingStep = Number(window.localStorage.getItem(pendingStepStorageKey));
       if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) setStep(pendingStep);
       window.localStorage.removeItem(pendingStepStorageKey);
       setAuthPromptOpen(false);
     };
-    void supabase.auth.getUser().then(({ data: authData }) => acceptUser(authData.user ?? null));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => acceptUser(session?.user ?? null));
+    void supabase.auth.getUser().then(({ data: authData }) => { void acceptUser(authData.user ?? null); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { void acceptUser(session?.user ?? null); });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
   useEffect(() => {
-    if (!user || !localDraftReady) return;
+    if (!user || !legalReady || !localDraftReady) return;
     let active = true;
     const hydratePortfolio = async () => {
       setCloudSaveState("loading");
       setCloudError("");
       const supabase = getSupabaseBrowserClient();
-      const { data: stored, error } = await supabase
-        .from("creator_portfolios")
-        .select("content,status")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [portfolioResult, analyticsResult, preferencesResult] = await Promise.all([
+        supabase
+          .from("creator_portfolios")
+          .select("content,status")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase.rpc("get_my_portfolio_analytics"),
+        supabase
+          .from("creator_notification_preferences")
+          .select("email_digest_enabled")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
+      const { data: stored, error } = portfolioResult;
 
       if (!active) return;
       if (error) {
@@ -388,15 +430,22 @@ function PortfolioEditor() {
       const localMustWin = window.localStorage.getItem(draftUploadPendingKey) === "1";
       const remoteContent = stored?.content;
       const hasRemoteContent = Boolean(remoteContent) && typeof remoteContent === "object" && !Array.isArray(remoteContent) && Object.keys(remoteContent as object).length > 0;
+      const notificationEnabled = preferencesResult.data?.email_digest_enabled === true;
+      setNotificationPreferenceExists(Boolean(preferencesResult.data));
+      if (!analyticsResult.error && analyticsResult.data && typeof analyticsResult.data === "object") {
+        setViews(Number((analyticsResult.data as { total_views?: unknown }).total_views) || 0);
+      }
 
       if (hasRemoteContent && !localMustWin) {
-        const restored = restorePortfolio(remoteContent);
+        const restored = { ...restorePortfolio(remoteContent), notifyViews: notificationEnabled };
         dataRef.current = restored;
         setData(restored);
         setPublicationStatus(stored?.status === "published" ? "published" : stored?.status === "unpublished" ? "unpublished" : "draft");
         window.localStorage.setItem(draftStorageKey, JSON.stringify(restored));
       } else {
-        const localDraft = dataRef.current;
+        const localDraft = { ...dataRef.current, notifyViews: notificationEnabled };
+        dataRef.current = localDraft;
+        setData(localDraft);
         const draftPayload = {
           content: localDraft,
           status: stored?.status === "published" ? "published" : stored?.status === "unpublished" ? "unpublished" : "draft",
@@ -420,7 +469,7 @@ function PortfolioEditor() {
 
     void hydratePortfolio();
     return () => { active = false; };
-  }, [user, localDraftReady]);
+  }, [user, legalReady, localDraftReady]);
   useEffect(() => {
     if (!user || !cloudReady) return;
     const timer = window.setTimeout(async () => {
@@ -716,7 +765,35 @@ function PortfolioEditor() {
     void deleteRemoteAsset("brand", id, item?.storagePath).catch(() => setAssetError("Quitamos el logo de la vista, pero no pudimos eliminar su copia en Brilla."));
   };
   const openPortfolio = () => setFinalView(true);
+  const downloadPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    setPublishError("");
+    try {
+      const { downloadPortfolioPdf } = await import("./portfolio-pdf");
+      await downloadPortfolioPdf(data, media, brands);
+    } catch {
+      setPublishError("No pudimos crear el PDF. Revisa que tus imágenes sigan disponibles e inténtalo nuevamente.");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
   const syncMetrics = () => { setSyncing(true); window.setTimeout(() => { setData((current) => ({ ...current, metricSync: true })); setSyncing(false); }, 900); };
+  const saveViewNotifications = async (value: boolean) => {
+    setData((current) => ({ ...current, notifyViews: value }));
+    if (!user) return;
+    setNotificationBusy(true);
+    setPublishError("");
+    const supabase = getSupabaseBrowserClient();
+    const result = notificationPreferenceExists
+      ? await supabase.from("creator_notification_preferences").update({ email_digest_enabled: value }).eq("user_id", user.id)
+      : await supabase.from("creator_notification_preferences").insert({ user_id: user.id, email_digest_enabled: value, digest_frequency: "weekly" });
+    if (result.error) {
+      setData((current) => ({ ...current, notifyViews: !value }));
+      setPublishError("No pudimos guardar tu preferencia de actividad. Inténtalo nuevamente.");
+    } else setNotificationPreferenceExists(true);
+    setNotificationBusy(false);
+  };
   const copyLink = async () => { const link = `${window.location.origin}/${data.portfolioSlug}`; await navigator.clipboard?.writeText(link); setCopied(true); window.setTimeout(() => setCopied(false), 1800); };
   const updateSlug = (value: string) => {
     setPublishError("");
@@ -779,7 +856,8 @@ function PortfolioEditor() {
     setPublishBusy(false);
   };
   const requestStep = (nextStep: number) => {
-    if (nextStep <= 1 || user) { setStep(nextStep); return; }
+    if (nextStep <= 1 || (user && legalReady)) { setStep(nextStep); return; }
+    if (user && !legalReady) { setLegalConsentRequired(true); return; }
     if (step < 1) { setStep(1); return; }
     window.localStorage.setItem(draftStorageKey, JSON.stringify(data));
     window.localStorage.setItem(pendingStepStorageKey, String(nextStep));
@@ -788,8 +866,13 @@ function PortfolioEditor() {
     setAuthPromptOpen(true);
   };
   const continueWithGoogle = async () => {
+    if (!loginConsentChecked) {
+      setAuthError("Debes autorizar el tratamiento de datos y aceptar los Términos antes de continuar.");
+      return;
+    }
     setAuthBusy(true);
     setAuthError("");
+    markLegalConsentPending();
     window.localStorage.setItem(draftStorageKey, JSON.stringify(data));
     window.localStorage.setItem(draftUploadPendingKey, "1");
     const supabase = getSupabaseBrowserClient();
@@ -798,11 +881,43 @@ function PortfolioEditor() {
       options: { redirectTo: `${authRedirectOrigin()}/crear` },
     });
     if (error) {
+      clearPendingLegalConsent();
       setAuthError(error.message.toLowerCase().includes("provider") ? "El acceso con Google todavía no está habilitado. Inténtalo nuevamente en unos minutos." : "No pudimos abrir Google. Inténtalo nuevamente.");
       setAuthBusy(false);
     }
   };
-  if (finalView) return <main className="finalDeckMode"><div className="portfolioToolbar"><button onClick={() => setFinalView(false)}>← Editor</button><span>{published ? "↗ Publicado" : "◉ Vista previa"}</span><button onClick={published ? copyLink : () => { setFinalView(false); setStep(6); }}>{published ? copied ? "Copiado ✓" : "Copiar enlace" : "Ir a publicar"}</button><button onClick={() => window.print()}>Descargar PDF</button></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />}</main>;
+  const acceptAuthenticatedConsent = async () => {
+    if (!user || !authenticatedConsentChecked) return;
+    setLegalBusy(true);
+    setLegalError("");
+    const result = await recordCurrentLegalConsent(getSupabaseBrowserClient(), user.id, "authenticated_prompt");
+    if (!result.accepted) {
+      setLegalError("No pudimos guardar tu autorización. Revisa tu conexión e inténtalo nuevamente.");
+    } else {
+      setLegalReady(true);
+      setLegalConsentRequired(false);
+      setAuthenticatedConsentChecked(false);
+      const pendingStep = Number(window.localStorage.getItem(pendingStepStorageKey));
+      if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) setStep(pendingStep);
+      window.localStorage.removeItem(pendingStepStorageKey);
+    }
+    setLegalBusy(false);
+  };
+  const declineAuthenticatedConsent = async () => {
+    setLegalBusy(true);
+    await getSupabaseBrowserClient().auth.signOut({ scope: "local" });
+    clearPendingLegalConsent();
+    setUser(null);
+    setLegalReady(false);
+    setLegalConsentRequired(false);
+    setAuthenticatedConsentChecked(false);
+    setLegalError("");
+    setCloudReady(false);
+    setCloudSaveState("local");
+    setLegalBusy(false);
+  };
+  if (user && legalConsentRequired) return <main className="builderApp"><LegalConsentGate checked={authenticatedConsentChecked} busy={legalBusy} error={legalError} onCheckedChange={setAuthenticatedConsentChecked} onAccept={() => void acceptAuthenticatedConsent()} onSignOut={() => void declineAuthenticatedConsent()} /></main>;
+  if (finalView) return <main className="finalDeckMode"><div className="portfolioToolbar"><button onClick={() => setFinalView(false)}>← Editor</button><span>{published ? "↗ Publicado" : "◉ Vista previa"}</span><button onClick={published ? copyLink : () => { setFinalView(false); setStep(6); }}>{published ? copied ? "Copiado ✓" : "Copiar enlace" : "Ir a publicar"}</button><button onClick={() => void downloadPdf()} disabled={pdfBusy}>{pdfBusy ? "Creando PDF…" : "Descargar PDF"}</button></div>{publishError && <p className="publishError finalPdfError" role="alert">{publishError}</p>}{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />}</main>;
 
   const statusLabel = assetProcessing > 0
     ? assetProcessing === 1 ? "Preparando 1 archivo…" : `Preparando ${assetProcessing} archivos…`
@@ -832,12 +947,12 @@ function PortfolioEditor() {
         {step === 3 && <div className="formPanel"><div className={`syncCard ${data.metricSync ? "connected" : ""}`}><div><span>{data.metricSync ? "✓" : "↻"}</span><div><strong>{data.metricSync ? "Métricas conectadas" : "Conecta tus métricas"}</strong><small>{data.metricSync ? "Instagram y TikTok · actualización automática activa" : "Mantén seguidores y alcance al día sin editar tu diseño."}</small></div></div><button onClick={syncMetrics} disabled={syncing || data.metricSync}>{syncing ? "Conectando…" : data.metricSync ? "Conectado" : "Conectar redes"}</button></div><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} /><div className="metricPreview"><span><b>{data.womenAudience}</b><small>Mujeres</small></span><div><strong>{data.followers}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews}</strong><small>vistas mensuales</small></div></div></div>}
         {step === 4 && <div className="formPanel"><Choice title="Cada video UGC incluye" options={includeOptions} selected={data.includes} toggle={(v) => toggle("includes", v)} services /><div className="twoFields"><Field label="Video UGC" value={data.videoRate} set={(v) => update("videoRate", v)} placeholder="$350.000 COP" /><Field label="Reel en colaboración" value={data.collabRate} set={(v) => update("collabRate", v)} placeholder="$400.000 COP" /><Field label="1 historia con CTA" value={data.storyRate} set={(v) => update("storyRate", v)} placeholder="$80.000 COP" /><Field label="Pack 3 historias" value={data.storyPackRate} set={(v) => update("storyPackRate", v)} placeholder="$210.000 COP" /></div><Field label="Derechos de pauta por mes" value={data.usageRate} set={(v) => update("usageRate", v)} placeholder="$80.000 COP / mes" /></div>}
         {step === 5 && <div className="formPanel">{schema.contactVisual && <AssetSlot title="Visual de cierre" text="Aparece en la última lámina de esta plantilla." media={contactVisual} accept="image/*,video/*" onChange={(event) => uploadSpecial("__contact", event)} onRemove={() => contactVisual && remove(contactVisual.id)} />}<Choice title="Tipos de contenido" options={contentOptions} selected={data.contentTypes} toggle={(v) => toggle("contentTypes", v)} services /><div className="twoFields"><Field label="Correo" type="email" value={data.email} set={(v) => update("email", v)} placeholder="hola@tucorreo.com" /><Field label="WhatsApp" value={data.whatsapp} set={(v) => update("whatsapp", v)} placeholder="+57 300 000 0000" /><Field label="Instagram" value={data.instagram} set={(v) => update("instagram", v)} placeholder="@tuusuario" /><Field label="TikTok" value={data.tiktok} set={(v) => update("tiktok", v)} placeholder="@tuusuario" /></div><Field label="Disponibilidad" value={data.availability} set={(v) => update("availability", v)} placeholder="Disponible para campañas" /><Choice title="Servicios ofrecidos" options={serviceOptions} selected={data.services} toggle={(v) => toggle("services", v)} services /><div className="readyCard"><span>✦</span><div><strong>Tu presentación está lista</strong><p>Usa la rueda del mouse, el trackpad, las flechas o desliza para recorrerla.</p></div></div></div>}
-        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => setData((current) => ({ ...current, notifyViews: value }))} title="Alertas de visualización" text="Recibe un aviso cuando una marca abra tu portafolio." /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización registrada" : "visualizaciones registradas"}</strong><small>Abre la vista previa para comprobar la experiencia de una marca.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span>↗</span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => { openPortfolio(); window.setTimeout(() => window.print(), 350); }}><span>↓</span><strong>Media kit PDF</strong><small>Descarga una versión bien maquetada</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : "Publícalo cuando quieras. Tu borrador permanece guardado."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking"}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
+        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => void saveViewNotifications(value)} title="Resumen de actividad" text={notificationBusy ? "Guardando tu preferencia…" : "Recibe un resumen semanal cuando haya actividad nueva. Puedes cambiar la frecuencia en tu cuenta."} /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización real" : "visualizaciones reales"}</strong><small>El panel de tu cuenta muestra visitantes aproximados y clics por canal.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span>↗</span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => void downloadPdf()} disabled={pdfBusy}><span>↓</span><strong>{pdfBusy ? "Creando PDF…" : "Media kit PDF"}</strong><small>Descarga un archivo listo para compartir</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : "Publícalo cuando quieras. Tu borrador permanece guardado."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking"}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
         <div className="builderActions"><button className="backButton" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => requestStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton" onClick={() => openPortfolio()}>Ver portafolio <span>↗</span></button>}</div>
       </section>
       <aside className="livePreview"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>{data.format === "website" ? "Página web · cambios en vivo" : "Presentación horizontal · cambios en vivo"}</strong></div><small>{data.format === "website" ? "Scroll ↓" : "Desliza →"}</small></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} />}</aside>
     </div>
-    {authPromptOpen && <div className="identityAuthOverlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthPromptOpen(false); }}><section className="identityAuthCard" role="dialog" aria-modal="true" aria-labelledby="identity-auth-title"><button className="identityAuthClose" type="button" onClick={() => setAuthPromptOpen(false)} aria-label="Volver a Identidad">×</button><span className="identityAuthMark">✦</span><small>IDENTIDAD COMPLETADA</small><h2 id="identity-auth-title">Para continuar, inicia sesión.</h2><p>Tu plantilla y la información que acabas de completar ya están guardadas en este dispositivo.</p><div className="identityAuthPromise"><span>✓</span><div><strong>No perderás tu progreso</strong><small>Al volver de Google continuarás exactamente desde aquí.</small></div></div>{authError && <p className="identityAuthError" role="alert">{authError}</p>}<button className="googleContinue" type="button" onClick={continueWithGoogle} disabled={authBusy || checkingAuth}><b>G</b>{checkingAuth ? "Comprobando sesión…" : authBusy ? "Abriendo Google…" : "Continuar con Google"}<span>→</span></button><button className="identityAuthBack" type="button" onClick={() => setAuthPromptOpen(false)}>Seguir editando mi identidad</button></section></div>}
+    {authPromptOpen && <div className="identityAuthOverlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthPromptOpen(false); }}><section className="identityAuthCard" role="dialog" aria-modal="true" aria-labelledby="identity-auth-title"><button className="identityAuthClose" type="button" onClick={() => setAuthPromptOpen(false)} aria-label="Volver a Identidad">×</button><span className="identityAuthMark">✦</span><small>IDENTIDAD COMPLETADA</small><h2 id="identity-auth-title">Para continuar, inicia sesión.</h2><p>Tu plantilla y la información que acabas de completar ya están guardadas en este dispositivo.</p><div className="identityAuthPromise"><span>✓</span><div><strong>No perderás tu progreso</strong><small>Al volver de Google continuarás exactamente desde aquí.</small></div></div>{authError && <p className="identityAuthError" role="alert">{authError}</p>}<LegalConsentCheckbox id="editor-login-legal-consent" checked={loginConsentChecked} onChange={setLoginConsentChecked} /><button className="googleContinue" type="button" onClick={continueWithGoogle} disabled={authBusy || checkingAuth || !loginConsentChecked}><b>G</b>{checkingAuth ? "Comprobando sesión…" : authBusy ? "Abriendo Google…" : "Continuar con Google"}<span>→</span></button><button className="identityAuthBack" type="button" onClick={() => setAuthPromptOpen(false)}>Seguir editando mi identidad</button></section></div>}
   </main>;
 }
 
@@ -848,13 +963,21 @@ function ToggleRow({ checked, set, title, text }: { checked: boolean; set: (valu
 function Choice({ title, options, selected, toggle, services = false }: { title: string; options: string[]; selected: string[]; toggle: (v: string) => void; services?: boolean }) { return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i>{selected.includes(option) ? "✓" : "+"}</i>{option}</button>)}</div></div>; }
 function Theme({ name, note, mode, font, defaultFont, current, choose }: { name: string; note: string; mode: string; font: string; defaultFont: string; current: string; choose: (mode: string, fontStyle: string) => void }) { return <button className={current === mode ? "selected" : ""} onClick={() => choose(mode, defaultFont)}><i className={`themePreview ${mode}`}><b>{name}</b><em>Aa</em><u /></i><strong>{name}</strong><small>{note}</small><span>{templateSchemas[mode].label} · {font}</span></button>; }
 
+function emailLink(value: string) { return `mailto:${value.trim()}`; }
+function whatsappLink(value: string) { return `https://wa.me/${value.replace(/\D/g, "")}`; }
+function socialLink(network: "instagram" | "tiktok", value: string) {
+  const trimmed = value.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${network}.com/${trimmed.replace(/^@/, "")}`;
+}
+
 export function WebsitePortfolio({ data, media, brands, schema, expanded = false }: { data: Portfolio; media: Media[]; brands: BrandAsset[]; schema: TemplateSchema; expanded?: boolean }) {
   const work = media.filter((item) => data.portfolioCategories.includes(item.category));
   const groups = data.portfolioCategories.map((category) => ({ category, items: work.filter((item) => item.category === category).slice(0, category === "Fotografía" ? schema.photoLimit : schema.categoryLimit) })).filter((group) => group.items.length);
   const countries = data.topCountries.split("·").map((item) => item.trim()).filter(Boolean);
   const portrait = media.find((item) => item.category === "__portrait") ?? null;
   return <div className={`websitePortfolio website-${data.webTemplate} font-${data.fontStyle} ${expanded ? "expanded" : "compact"}`} style={{ "--site-accent": data.accent } as CSSProperties}>
-    <header className="siteNav"><strong>{data.name}<i>•</i></strong><nav><a href="#web-work">Trabajo</a><a href="#web-about">Perfil</a><a href="#web-services">Servicios</a><a className="navContact" href={`mailto:${data.email}`}>Contacto ↗</a></nav></header>
+    <header className="siteNav"><strong>{data.name}<i>•</i></strong><nav><a href="#web-work">Trabajo</a><a href="#web-about">Perfil</a><a href="#web-services">Servicios</a><a className="navContact" href={emailLink(data.email)} data-analytics-target="email">Contacto ↗</a></nav></header>
     <section className="siteHero webSection"><div><small>UGC CREATOR · {data.location}</small><h1>{data.title}</h1><p>{data.bio}</p><div className="heroActions"><a href="#web-work">Ver proyectos ↓</a><span>{data.availability}</span></div></div><MediaCard item={portrait} label="TU FOTO" index={0} /><b className="heroMark">UGC</b></section>
     <div className="webProof"><span><b>{data.followers}</b> seguidores</span><span><b>{data.monthlyViews}</b> vistas mensuales</span><span><b>{data.womenAudience}</b> audiencia femenina</span><span><b>{data.niches.length}</b> nichos principales</span></div>
     <section className="webAbout webSection" id="web-about"><div><small>01 · PERFIL</small><h2>Estrategia, sensibilidad y contenido que se siente real.</h2></div><div><p>{data.bio}</p><div className="webTags">{Array.from(new Set([...data.niches, ...data.clientTypes])).map((item) => <span key={item}>{item}</span>)}</div></div></section>
@@ -862,7 +985,7 @@ export function WebsitePortfolio({ data, media, brands, schema, expanded = false
     {brands.length > 0 && <section className="webBrands webSection"><small>03 · EXPERIENCIA</small><h2>Marcas que han confiado en mi mirada.</h2><div>{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={`Logo de ${brand.name}`} /><span>{brand.name}</span></article>)}</div></section>}
     <section className="webAudience webSection"><div><small>AUDIENCIA</small><h2>Una comunidad lista para descubrir nuevas historias.</h2><div className="webNumbers"><span><b>{data.followers}</b>seguidores</span><span><b>{data.monthlyViews}</b>vistas / mes</span><span><b>{data.womenAudience}</b>mujeres</span></div></div><div className="webAudienceCard"><div className="webAudienceRing"><b>{data.womenAudience}</b><span>audiencia femenina</span></div>{countries.map((country, index) => <p key={country}><span>{country}</span><i style={{ width: `${Math.max(18, 88 - index * 18)}%` }} /></p>)}</div></section>
     <section className="webServices webSection" id="web-services"><div className="webSectionTitle"><small>04 · SERVICIOS</small><h2>Soluciones creadas para cada objetivo de marca.</h2></div><div className="contentFormats">{data.contentTypes.map((type) => <span key={type}>{type}</span>)}</div><div className="serviceCards">{data.services.map((service, index) => <article key={service}><span>0{index + 1}</span><h3>{service}</h3><p>{index === 0 ? data.includes.join(" · ") : "Concepto, producción y entrega optimizada para redes."}</p><b>↗</b></article>)}</div><div className="webRates"><article><span>Video UGC</span><b>{data.videoRate}</b></article><article><span>Reel colaborativo</span><b>{data.collabRate}</b></article><article><span>1 historia con CTA</span><b>{data.storyRate}</b></article><article><span>Pack de historias</span><b>{data.storyPackRate}</b></article><article><span>Derechos de pauta / mes</span><b>{data.usageRate}</b></article></div></section>
-    <section className="webContact webSection" id="web-contact"><small>HAGAMOS ALGO MEMORABLE</small><h2>Tu marca merece una historia que la gente quiera ver.</h2><a href={`mailto:${data.email}`}>Empecemos un proyecto <span>↗</span></a><div><p><b>EMAIL</b>{data.email}</p><p><b>WHATSAPP</b>{data.whatsapp}</p><p><b>INSTAGRAM</b>{data.instagram}</p><p><b>TIKTOK</b>{data.tiktok}</p></div></section>
+    <section className="webContact webSection" id="web-contact"><small>HAGAMOS ALGO MEMORABLE</small><h2>Tu marca merece una historia que la gente quiera ver.</h2><a href={emailLink(data.email)} data-analytics-target="email">Empecemos un proyecto <span>↗</span></a><div><p><b>EMAIL</b><a href={emailLink(data.email)} data-analytics-target="email">{data.email}</a></p><p><b>WHATSAPP</b><a href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{data.whatsapp}</a></p><p><b>INSTAGRAM</b><a href={socialLink("instagram", data.instagram)} target="_blank" rel="noreferrer" data-analytics-target="instagram">{data.instagram}</a></p><p><b>TIKTOK</b><a href={socialLink("tiktok", data.tiktok)} target="_blank" rel="noreferrer" data-analytics-target="tiktok">{data.tiktok}</a></p></div></section>
     <footer className="siteFooter"><strong>{data.name}</strong><span>{data.location}</span><span>{data.availability}</span></footer>
   </div>;
 }
@@ -901,5 +1024,5 @@ function BrandsSlide({ brands, active, index }: { data: Portfolio; brands: Brand
 function AudienceSlide({ data, active, index }: SlideProps) { const countries = data.topCountries.split("·").map((item) => item.trim()).filter(Boolean); return <section className={`deckSlide audience ${active === index ? "isActive" : ""}`}><div><small>MI AUDIENCIA</small><h2>Mi comunidad conecta principalmente con mujeres.</h2><div className="audienceRing"><strong>{data.womenAudience}</strong><span>mujeres</span></div><div className="audienceStats"><span><b>{data.followers}</b>seguidores</span><span><b>{data.monthlyViews}</b>vistas / mes</span></div></div><div className="countryPanel"><h3>Principales ubicaciones</h3>{countries.map((country, i) => <p key={country}><span>{country}</span><i style={{ width: `${Math.max(14, 86 - i * 17)}%` }} /></p>)}<div className="socialCard"><b>{data.instagram}</b><span>{data.name}</span><small>{data.niches.join(" · ")}</small></div></div></section>; }
 function RateSlide({ data, active, index, secondary }: SlideProps & { secondary: boolean }) { return <section className={`deckSlide rates ${secondary ? "secondary" : ""} ${active === index ? "isActive" : ""}`}><div className="rateCopy"><small>TARIFAS</small>{secondary ? <><h2>Historias & pauta</h2><Rate name="Reel en colaboración" price={data.collabRate} /><Rate name="1 historia con CTA" price={data.storyRate} /><Rate name="Pack de 3 historias" price={data.storyPackRate} /><Rate name="Derechos de pauta / mes" price={data.usageRate} /></> : <><h2>Video UGC</h2><p>Incluye:</p><ul>{data.includes.map((item) => <li key={item}>✓ {item}</li>)}</ul><strong className="mainPrice">{data.videoRate}</strong></>}</div><div className="rateVisual"><span>UGC</span><i>✦</i><b>{secondary ? "SOCIAL" : "CREATE"}</b></div></section>; }
 function Rate({ name, price }: { name: string; price: string }) { return <div className="rateLine"><span>{name}</span><strong>{price}</strong></div>; }
-function ContactSlide({ data, active, index, contactVisual }: SlideProps) { return <section className={`deckSlide contact ${active === index ? "isActive" : ""}`}><div className="phoneFrame"><MediaCard item={contactVisual} label="LET'S CREATE" index={0} /></div><div className="contactCopy"><small>{data.services.join(" · ")}</small><h2>{data.contentTypes.join(" · ")}</h2><div className="deckClientTypes">{data.clientTypes.map((type) => <span key={type}>{type}</span>)}</div><em>¡Trabajemos juntos!</em><p><b>WhatsApp</b>{data.whatsapp}</p><p><b>Email</b>{data.email}</p><p><b>Instagram</b>{data.instagram}</p><p><b>TikTok</b>{data.tiktok}</p><span>{data.availability}</span></div></section>; }
-function MediaCard({ item, label, index }: { item: Media | null; label: string; index: number }) { const framed = item?.type === "video" && item.framed; return <article className={`deckMedia media-${index} ${framed ? "videoCard" : item?.type === "video" ? "videoPlain" : ""}`}>{item ? item.type === "video" ? <>{framed && <i className="videoNotch" />}<video src={item.url} poster={item.previewUrl} muted playsInline controls preload="metadata" /><div className="videoSocials">{item.instagram && <a href={item.instagram} target="_blank" rel="noreferrer" aria-label="Ver en Instagram">IG</a>}{item.tiktok && <a href={item.tiktok} target="_blank" rel="noreferrer" aria-label="Ver en TikTok">TK</a>}</div></> : <img src={item.url} alt={`Pieza UGC de ${label}`} loading="lazy" /> : <div className="mediaPlaceholder"><span>{label}</span><b>{String(index + 1).padStart(2, "0")}</b><i>▶</i></div>}</article>; }
+function ContactSlide({ data, active, index, contactVisual }: SlideProps) { return <section className={`deckSlide contact ${active === index ? "isActive" : ""}`}><div className="phoneFrame"><MediaCard item={contactVisual} label="LET'S CREATE" index={0} /></div><div className="contactCopy"><small>{data.services.join(" · ")}</small><h2>{data.contentTypes.join(" · ")}</h2><div className="deckClientTypes">{data.clientTypes.map((type) => <span key={type}>{type}</span>)}</div><em>¡Trabajemos juntos!</em><p><b>WhatsApp</b><a href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{data.whatsapp}</a></p><p><b>Email</b><a href={emailLink(data.email)} data-analytics-target="email">{data.email}</a></p><p><b>Instagram</b><a href={socialLink("instagram", data.instagram)} target="_blank" rel="noreferrer" data-analytics-target="instagram">{data.instagram}</a></p><p><b>TikTok</b><a href={socialLink("tiktok", data.tiktok)} target="_blank" rel="noreferrer" data-analytics-target="tiktok">{data.tiktok}</a></p><span>{data.availability}</span></div></section>; }
+function MediaCard({ item, label, index }: { item: Media | null; label: string; index: number }) { const framed = item?.type === "video" && item.framed; return <article className={`deckMedia media-${index} ${framed ? "videoCard" : item?.type === "video" ? "videoPlain" : ""}`}>{item ? item.type === "video" ? <>{framed && <i className="videoNotch" />}<video src={item.url} poster={item.previewUrl} muted playsInline controls preload="metadata" /><div className="videoSocials">{item.instagram && <a href={item.instagram} target="_blank" rel="noreferrer" aria-label="Ver en Instagram" data-analytics-target="instagram">IG</a>}{item.tiktok && <a href={item.tiktok} target="_blank" rel="noreferrer" aria-label="Ver en TikTok" data-analytics-target="tiktok">TK</a>}</div></> : <img src={item.url} alt={`Pieza UGC de ${label}`} loading="lazy" /> : <div className="mediaPlaceholder"><span>{label}</span><b>{String(index + 1).padStart(2, "0")}</b><i>▶</i></div>}</article>; }

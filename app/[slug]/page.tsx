@@ -107,5 +107,5 @@ export default async function PublicPortfolioPage({ params }: { params: Promise<
   const resolved = await resolvePublicMedia(portfolio.media);
   const media = resolved.filter((item) => item.kind === "media").map((item) => item.asset as Media);
   const brands = resolved.filter((item) => item.kind === "brand").map((item) => item.asset as BrandAsset);
-  return <PublicPortfolioClient data={portfolio.content} media={media} brands={brands} />;
+  return <PublicPortfolioClient slug={portfolio.slug} data={portfolio.content} media={media} brands={brands} />;
 }

@@ -1,0 +1,6 @@
+create index transactional_email_deliveries_user_id_idx
+on private.transactional_email_deliveries (user_id);
+
+create index transactional_email_deliveries_portfolio_id_idx
+on private.transactional_email_deliveries (portfolio_id)
+where portfolio_id is not null;
