@@ -9,6 +9,7 @@ import { ChangeEvent, CSSProperties, PointerEvent, UIEvent, WheelEvent, useEffec
 import type { User } from "@supabase/supabase-js";
 import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
 import { LegalConsentGate } from "../components/legal-consent-gate";
+import { rememberAuthRedirect } from "../lib/auth-redirect";
 import {
   clearPendingLegalConsent,
   markLegalConsentPending,
@@ -873,6 +874,7 @@ function PortfolioEditor() {
     setAuthBusy(true);
     setAuthError("");
     markLegalConsentPending();
+    rememberAuthRedirect("/crear");
     window.localStorage.setItem(draftStorageKey, JSON.stringify(data));
     window.localStorage.setItem(draftUploadPendingKey, "1");
     const supabase = getSupabaseBrowserClient();

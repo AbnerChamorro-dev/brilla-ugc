@@ -26,9 +26,12 @@ test("keeps the Brilla product and native Next.js routes", async () => {
 });
 
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
-  const [editor, account, migration] = await Promise.all([
+  const [editor, account, layout, authRedirectHandler, authRedirect, migration] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/cuenta/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/auth-redirect-handler.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/auth-redirect.ts", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260905144657_create_creator_portfolios.sql", import.meta.url), "utf8"),
   ]);
 
@@ -51,6 +54,13 @@ test("keeps Google auth and durable portfolio storage wired safely", async () =>
   assert.match(account, /storage\.from\("creator-media"\)\.remove\(paths\)/);
   assert.match(account, /deleteConfirmation !== "ELIMINAR"/);
   assert.match(account, /get_my_portfolio_analytics/);
+  assert.match(editor, /rememberAuthRedirect\("\/crear"\)/);
+  assert.match(account, /rememberAuthRedirect\(next\)/);
+  assert.match(layout, /<AuthRedirectHandler \/>/);
+  assert.match(authRedirectHandler, /getSupabaseBrowserClient\(\)\.auth\.getSession\(\)/);
+  assert.match(authRedirectHandler, /window\.history\.replaceState/);
+  assert.match(authRedirectHandler, /window\.location\.replace\(destination\)/);
+  assert.match(authRedirect, /url\.origin !== window\.location\.origin/);
 
   assert.match(migration, /alter table public\.creator_portfolios enable row level security/i);
   assert.match(migration, /for insert[\s\S]*with check \(\(select auth\.uid\(\)\) = user_id\)/i);
@@ -255,7 +265,7 @@ test("publishes real slug routes without exposing private portfolio data", async
 });
 
 test("requires explicit, versioned legal consent before Google access", async () => {
-  const [editor, account, checkbox, helper, privacy, terms, migration, home] = await Promise.all([
+  const [editor, account, checkbox, helper, privacy, terms, migration, consentTextMigration, home] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/cuenta/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/legal-consent-checkbox.tsx", import.meta.url), "utf8"),
@@ -263,6 +273,7 @@ test("requires explicit, versioned legal consent before Google access", async ()
     readFile(new URL("../app/privacidad/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/terminos/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../supabase/migrations/20260906185249_record_creator_legal_consents.sql", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260906192330_simplify_legal_consent_text.sql", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
 
@@ -280,7 +291,8 @@ test("requires explicit, versioned legal consent before Google access", async ()
   assert.match(checkbox, /href="\/terminos"/);
   assert.match(helper, /DATA_POLICY_VERSION = "2026-09-06"/);
   assert.match(helper, /TERMS_VERSION = "2026-09-06"/);
-  assert.match(helper, /previa, expresa e informada/);
+  assert.match(helper, /He leído y acepto la Política de Tratamiento de Datos y los Términos de Uso de Brilla/);
+  assert.match(checkbox, /He leído y acepto la/);
   assert.match(helper, /accepted_via: acceptedVia/);
   assert.doesNotMatch(helper, /accepted_at:/);
 
@@ -307,4 +319,6 @@ test("requires explicit, versioned legal consent before Google access", async ()
   assert.match(migration, /revoke all on table public\.creator_legal_consents[\s\S]*from public, anon, authenticated/i);
   assert.match(migration, /grant insert \(user_id, accepted_via\)/i);
   assert.doesNotMatch(migration, /grant (?:update|delete)/i);
+  assert.match(consentTextMigration, /alter column authorization_text set default/i);
+  assert.match(consentTextMigration, /He leído y acepto la Política de Tratamiento de Datos y los Términos de Uso de Brilla/i);
 });

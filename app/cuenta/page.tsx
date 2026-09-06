@@ -7,6 +7,7 @@ import { CSSProperties, useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
 import { LegalConsentGate } from "../components/legal-consent-gate";
+import { rememberAuthRedirect } from "../lib/auth-redirect";
 import {
   clearPendingLegalConsent,
   markLegalConsentPending,
@@ -283,6 +284,7 @@ export default function AccountPage() {
     setError("");
     markLegalConsentPending();
     const next = safeNextPath();
+    rememberAuthRedirect(next);
     const { error: authError } = await getSupabaseBrowserClient().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${authRedirectOrigin()}${next}` },

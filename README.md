@@ -45,9 +45,9 @@ El proyecto incluye `vercel.json` con el framework `nextjs`. En Vercel configura
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_SITE_URL`
 
-Para producción, `NEXT_PUBLIC_SITE_URL` debe ser `https://brillaugc.com`.
+Para producción, `NEXT_PUBLIC_SITE_URL` debe coincidir con el dominio canónico: `https://www.brillaugc.com`.
 
-También deben permanecer registradas en Supabase las URLs de retorno de Google OAuth correspondientes al dominio de producción y a los previews que se quieran probar.
+En Supabase Auth → URL Configuration, configura `https://www.brillaugc.com` como Site URL y registra al menos `https://www.brillaugc.com/crear` y `https://www.brillaugc.com/cuenta` en Redirect URLs. Añade por separado el dominio sin `www` y los previews que se quieran probar si también iniciarán OAuth directamente desde ellos.
 
 ## Base de datos
 

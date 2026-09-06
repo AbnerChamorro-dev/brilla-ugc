@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const DATA_POLICY_VERSION = "2026-09-06";
 export const TERMS_VERSION = "2026-09-06";
-export const LEGAL_AUTHORIZATION_TEXT = "Autorizo de manera previa, expresa e informada a TECNOLOGYC S.A.S. para recolectar, almacenar, usar, circular, transmitir y suprimir mis datos personales con las finalidades descritas en la Política de Tratamiento de Datos de Brilla, y declaro que leí y acepto los Términos de Uso.";
+export const LEGAL_AUTHORIZATION_TEXT = "He leído y acepto la Política de Tratamiento de Datos y los Términos de Uso de Brilla.";
 
 const pendingConsentKey = "brilla-pending-legal-consent-v1";
 const pendingConsentLifetimeMs = 2 * 60 * 60 * 1000;
