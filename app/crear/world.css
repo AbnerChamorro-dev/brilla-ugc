@@ -13,10 +13,10 @@
 .worldScroller::-webkit-scrollbar { display: none; }
 
 .worldSticky {
-  --ink: #171412;
-  --cream: #f4ebda;
-  --lime: #dff36f;
-  --coral: #f08c6e;
+  --ink: #17132f;
+  --cream: #f4f1ff;
+  --lime: #53e0bd;
+  --coral: #6d4dff;
   position: sticky;
   top: 0;
   height: 100%;
@@ -197,6 +197,9 @@
 .worldFooter i { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #79a653; box-shadow: 0 0 0 4px rgba(121,166,83,.18); }
 .worldFooter b { display: inline-grid; place-items: center; width: 23px; height: 23px; margin-left: 8px; border: 1px solid; border-radius: 50%; animation: scrollNudge 1.2s ease-in-out infinite; }
 .worldScrollSpace { height: 400%; pointer-events: none; }
+
+/* Immersive portfolio worlds inherit the new Brilla spectrum. */
+.worldScroller{background:#17132f;box-shadow:0 30px 90px #17132f3d}.worldSticky{background:radial-gradient(circle at calc(12% + var(--world-progress) * 70%) 16%,rgba(255,255,255,.78),transparent 28%),linear-gradient(135deg,#f7f5ff 0%,#ddd7ff 100%)}.studioPlatform{background:#53e0bd}.backWall{background:#6d4dff}.studioDesk{background:#332477}.studioDesk::before,.studioDesk::after{background:#211a49}.laptop{background:#53e0bd}.productBottle{background:#f4f1ff}.coffee{background:#ffca4b;border-color:#f4f1ff}.coffee::after{border-color:#f4f1ff}.studioPlant::after{background:#f05ca9}.studioPlant i{background:#23786b}.noteBottom{background:#53e0bd}.contentWorld{color:#f4f1ff;background:#17132f}.worldScreen{border-color:#f4f1ff;background:#ded7ff}.sampleWorld0{background:#8066ff}.sampleWorld0::before{background:#53e0bd}.sampleWorld1{background:#53e0bd}.sampleWorld1::before{background:#332477}.sampleWorld2{background:#ffca4b}.worldRibbon{background:#53e0bd}.serviceWorld{background:#6d4dff}.serviceCore{color:#f4f1ff;background:#17132f}.serviceCore span{color:#53e0bd}.servicePlanet{background:#f4f1ff}.contactWorld{color:#f4f1ff;background:#17132f}.contactGlow{background:#6d4dff}.contactPlanet{background:radial-gradient(circle at 32% 28%,#fff4bb,#53e0bd 45%,#24917c);box-shadow:inset -40px -35px 70px #142d5738,0 0 80px #53e0bd29}.contactMessage a{color:#17132f;background:#f4f1ff}.contactMessage a span{color:#f4f1ff;background:#17132f}.worldFooter i{background:#53e0bd;box-shadow:0 0 0 4px #53e0bd2e}
 
 @keyframes slowFloat { 50% { transform: translateY(-12px) rotate(2deg); } }
 @keyframes slowSpin { to { transform: rotate(360deg); } }

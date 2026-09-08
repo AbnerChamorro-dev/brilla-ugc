@@ -1,226 +1,171 @@
 "use client";
 
-import { ChangeEvent, CSSProperties, useEffect, useState } from "react";
+import { ChangeEvent, CSSProperties, PointerEvent, UIEvent, WheelEvent, useEffect, useRef, useState } from "react";
 import "./crear.css";
-import "./showreel.css";
-import "./world.css";
+import "./templates.css";
+import "./website.css";
 
 type Portfolio = {
-  name: string; role: string; bio: string; location: string; niches: string[];
-  template: string; accent: string; email: string; instagram: string; services: string[];
+  name: string; title: string; bio: string; location: string; niches: string[]; format: "website" | "presentation"; webTemplate: string; template: string; fontStyle: string; accent: string; portfolioCategories: string[];
+  campaignTitle: string; contentTypes: string[]; clientTypes: string[]; services: string[]; includes: string[];
+  followers: string; monthlyViews: string; womenAudience: string; topCountries: string;
+  videoRate: string; collabRate: string; storyRate: string; storyPackRate: string; usageRate: string;
+  email: string; whatsapp: string; instagram: string; tiktok: string; availability: string;
 };
-type Media = { id: number; name: string; type: "video" | "image"; url: string; framed: boolean };
+type Media = { id: number; name: string; type: "video" | "image"; url: string; framed: boolean; category: string; instagram: string; tiktok: string };
+type BrandAsset = { id: number; name: string; url: string };
 
 const steps = [
-  ["Perfil", "Cuéntanos quién eres", "Esta información será lo primero que verán las marcas."],
-  ["Estilo", "Haz que se sienta tuyo", "Elige una dirección visual y personaliza el color principal."],
-  ["Contenido", "Muestra tu mejor trabajo", "Sube videos o fotos y decide cuáles llevan marco de teléfono."],
-  ["Contacto", "Prepárate para colaborar", "Agrega tus servicios y la forma en que pueden contactarte."],
+  ["Identidad", "Cuéntales quién eres", "Tu portada y presentación personal."],
+  ["Dirección", "Elige el lenguaje visual", "Decide entre una página web profesional o una experiencia presentacional."],
+  ["Portafolio", "Organiza tus mejores piezas", "Asigna fotos y videos a cada categoría de trabajo."],
+  ["Audiencia", "Demuestra tu alcance", "Agrega las cifras que ayudan a una marca a tomar decisiones."],
+  ["Tarifas", "Define tu oferta comercial", "Explica entregables, precios y derechos de uso."],
+  ["Contacto", "Abre la conversación", "Deja claros tus canales, formatos y disponibilidad."],
 ];
-const nicheOptions = ["Beauty", "Lifestyle", "Fashion", "Food", "Travel", "Fitness", "Tech", "Wellness"];
-const serviceOptions = ["Video UGC", "Fotografía", "Unboxing", "Testimoniales", "Voice over", "Ads para redes"];
-const colors = ["#ee8f72", "#dceb82", "#b88cff", "#71c9b8", "#ffbf69"];
+const categories = ["Campañas", "Cabello", "Beauty", "Familia", "Empresas", "Lugares", "Fotografía"];
+const nicheOptions = ["Beauty", "Lifestyle", "Fashion", "Food", "Travel", "Fitness", "Tech", "Wellness", "Maternidad", "Hogar"];
+const serviceOptions = ["Video UGC", "Fotografía UGC", "Reel colaborativo", "Historias", "Voice over", "Ads para redes", "Derechos de pauta"];
+const contentOptions = ["Unboxings", "Vlogs", "ASMR", "Trends", "Testimonios", "Tutoriales", "Reseñas", "Storytelling"];
+const includeOptions = ["Concepto creativo", "Guion estratégico", "Grabación", "Edición", "Formato vertical", "Subtítulos", "CTA", "Entrega de brutos"];
+const clientOptions = ["Belleza", "Cuidado del cabello", "Skincare", "Maquillaje", "Hogar", "Familia", "Hoteles", "Restaurantes", "Productos"];
+const colors = ["#c15f7a", "#a855f7", "#ff7a90", "#6f7bf7", "#48a898", "#f2b84b"];
+const fontOptions = [
+  { name: "Editorial", value: "editorial", sample: "Aa", note: "Elegante y sofisticada" },
+  { name: "Moderna", value: "modern", sample: "Ag", note: "Limpia y estratégica" },
+  { name: "Romántica", value: "romantic", sample: "Ab", note: "Suave y femenina" },
+  { name: "Magazine", value: "magazine", sample: "AA", note: "Impactante y expresiva" },
+];
+const templateOptions = [
+  { name: "Gallery", note: "Champaña editorial", mode: "gallery", font: "Editorial", defaultFont: "editorial" },
+  { name: "Studio Luv", note: "Berry cinematográfico", mode: "studio", font: "Romántica", defaultFont: "romantic" },
+  { name: "Scrapbook", note: "Rosa artesanal", mode: "scrapbook", font: "Magazine", defaultFont: "magazine" },
+  { name: "Art Director", note: "Carbón y coral", mode: "art", font: "Magazine", defaultFont: "magazine" },
+  { name: "Blue OS", note: "Periwinkle digital", mode: "blue", font: "Moderna", defaultFont: "modern" },
+  { name: "Whimsy", note: "Blush expresivo", mode: "whimsy", font: "Romántica", defaultFont: "romantic" },
+  { name: "Sage Journal", note: "Pistacho orgánico", mode: "sage", font: "Editorial", defaultFont: "editorial" },
+];
+const websiteOptions = [
+  { name: "Sunny Pop", note: "Colorida y divertida", mode: "pop", font: "Moderna", defaultFont: "modern" },
+  { name: "Retro Zine", note: "Collage scrapbook", mode: "retro", font: "Editorial", defaultFont: "editorial" },
+  { name: "Éditorial Chic", note: "Elegante y profesional", mode: "chic", font: "Editorial", defaultFont: "editorial" },
+  { name: "Neo Brutal", note: "Audaz y juvenil", mode: "bold", font: "Magazine", defaultFont: "magazine" },
+];
 const initial: Portfolio = {
-  name: "Sofía Mendoza", role: "Creadora UGC que convierte ideas en historias reales.",
-  bio: "Creo contenido cercano, estético y estratégico para marcas que quieren conectar de verdad con su comunidad.",
-  location: "Bogotá, Colombia", niches: ["Beauty", "Lifestyle", "Travel"], template: "editorial",
-  accent: "#ee8f72", email: "hola@sofiaugc.com", instagram: "@sofia.crea",
-  services: ["Video UGC", "Fotografía", "Unboxing"],
+  name: "Sofía Mendoza", title: "Creadora de Contenido UGC | Beauty, Lifestyle & Travel.",
+  bio: "Creo contenido auténtico, cercano y estratégico que muestra procesos y resultados reales para generar confianza y conexión con la audiencia.",
+  location: "Bogotá, Colombia", niches: ["Beauty", "Lifestyle", "Travel"], format: "website", webTemplate: "pop", template: "gallery", fontStyle: "modern", accent: "#c15f7a", portfolioCategories: categories,
+  campaignTitle: "Piezas UGC para campañas publicitarias", contentTypes: ["Unboxings", "Vlogs", "Testimonios", "Tutoriales"],
+  clientTypes: ["Belleza", "Skincare", "Hogar", "Hoteles", "Productos"], services: ["Video UGC", "Fotografía UGC", "Reel colaborativo", "Historias"],
+  includes: ["Concepto creativo", "Guion estratégico", "Grabación", "Edición", "Formato vertical"],
+  followers: "50.5 mil", monthlyViews: "700.2 K", womenAudience: "82.9%", topCountries: "Colombia 79.2% · Estados Unidos 3.3% · México 3% · España 2.5%",
+  videoRate: "$350.000 COP", collabRate: "$400.000 COP", storyRate: "$80.000 COP", storyPackRate: "$210.000 COP", usageRate: "$80.000 COP / mes",
+  email: "hola@sofiaugc.com", whatsapp: "+57 314 722 5878", instagram: "@sofia.crea", tiktok: "@sofia.crea", availability: "Disponible para campañas y colaboraciones",
 };
 
 export default function CreatePortfolio() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<Portfolio>(initial);
   const [media, setMedia] = useState<Media[]>([]);
+  const [brands, setBrands] = useState<BrandAsset[]>([]);
+  const [category, setCategory] = useState(categories[0]);
   const [saved, setSaved] = useState(true);
   const [finalView, setFinalView] = useState(false);
 
-  useEffect(() => {
-    const draft = window.localStorage.getItem("brilla-portfolio-draft");
-    if (draft) { try { setData(JSON.parse(draft)); } catch { /* use initial content */ } }
-  }, []);
-  useEffect(() => {
-    setSaved(false);
-    const timer = window.setTimeout(() => {
-      window.localStorage.setItem("brilla-portfolio-draft", JSON.stringify(data)); setSaved(true);
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [data]);
+  useEffect(() => { const draft = window.localStorage.getItem("brilla-portfolio-draft-v2"); if (draft) try { setData({ ...initial, ...JSON.parse(draft) }); } catch { /* keep defaults */ } }, []);
+  useEffect(() => { setSaved(false); const timer = window.setTimeout(() => { window.localStorage.setItem("brilla-portfolio-draft-v2", JSON.stringify(data)); setSaved(true); }, 450); return () => window.clearTimeout(timer); }, [data]);
 
   const update = (field: keyof Portfolio, value: string | string[]) => setData((current) => ({ ...current, [field]: value }));
-  const toggleList = (field: "niches" | "services", value: string) => update(field, data[field].includes(value) ? data[field].filter((item) => item !== value) : [...data[field], value]);
-  const upload = (event: ChangeEvent<HTMLInputElement>) => {
-    const additions = Array.from(event.target.files ?? []).map((file, index): Media => ({
-      id: Date.now() + index, name: file.name, type: file.type.startsWith("video") ? "video" : "image",
-      url: URL.createObjectURL(file), framed: file.type.startsWith("video"),
-    }));
-    setMedia((current) => [...current, ...additions]);
-  };
-  const toggleFrame = (id: number) => setMedia((current) => current.map((item) => item.id === id ? { ...item, framed: !item.framed } : item));
+  const toggle = (field: "niches" | "services" | "contentTypes" | "clientTypes" | "includes" | "portfolioCategories", value: string) => update(field, data[field].includes(value) ? data[field].filter((item) => item !== value) : [...data[field], value]);
+  const upload = (event: ChangeEvent<HTMLInputElement>) => { const targetCategory = data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0] ?? categories[0]; const additions = Array.from(event.target.files ?? []).map((file, index): Media => ({ id: Date.now() + index, name: file.name, type: file.type.startsWith("video") ? "video" : "image", url: URL.createObjectURL(file), framed: file.type.startsWith("video"), category: targetCategory, instagram: "", tiktok: "" })); setMedia((current) => [...current, ...additions]); event.target.value = ""; };
+  const updateMedia = (id: number, field: "instagram" | "tiktok", value: string) => setMedia((current) => current.map((item) => item.id === id ? { ...item, [field]: value } : item));
   const remove = (id: number) => setMedia((current) => current.filter((item) => { if (item.id === id) URL.revokeObjectURL(item.url); return item.id !== id; }));
-  const themeStyle = { "--builder-accent": data.accent } as CSSProperties;
+  const uploadBrands = (event: ChangeEvent<HTMLInputElement>) => { const additions = Array.from(event.target.files ?? []).map((file, index): BrandAsset => ({ id: Date.now() + index, name: file.name.replace(/\.[^.]+$/, ""), url: URL.createObjectURL(file) })); setBrands((current) => [...current, ...additions]); event.target.value = ""; };
+  const removeBrand = (id: number) => setBrands((current) => current.filter((item) => { if (item.id === id) URL.revokeObjectURL(item.url); return item.id !== id; }));
+  if (finalView) return <main className="finalDeckMode"><button className="deckBack" onClick={() => setFinalView(false)} aria-label="Volver al editor">←</button>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} expanded />}</main>;
 
-  if (finalView) return (
-    <main className="builderApp finalMode" style={themeStyle}>
-      <div className="finalToolbar"><a className="builderBrand" href="/">brilla<span>•</span></a><div className="finalNotice"><span>✓</span> Tu portafolio está listo</div><button onClick={() => setFinalView(false)}>Volver al editor</button></div>
-      <div className="publishedShell"><PortfolioPreview data={data} media={media} expanded /></div>
-      <div className="draftToast"><span>✦</span><div><strong>Borrador guardado</strong><small>Esta primera versión vive en tu dispositivo.</small></div></div>
-    </main>
-  );
-
-  return (
-    <main className="builderApp" style={themeStyle}>
-      <header className="builderTopbar"><a className="builderBrand" href="/">brilla<span>•</span></a><div className="builderStatus"><span className={saved ? "saved" : "saving"} />{saved ? "Borrador guardado" : "Guardando cambios..."}</div><a className="exitBuilder" href="/">Salir del editor</a></header>
-      <div className="builderGrid">
-        <aside className="builderSidebar">
-          <p className="sidebarLabel">TU PORTAFOLIO</p>
-          <nav aria-label="Pasos del portafolio">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => setStep(index)}><span>{index < step ? "✓" : "0" + (index + 1)}</span><div><small>PASO 0{index + 1}</small><strong>{item[0]}</strong></div></button>)}</nav>
-          <div className="sidebarTip"><span>✦</span><p><strong>Tip de Brilla</strong>Los portafolios con 6 a 10 piezas reciben más atención.</p></div>
-        </aside>
-
-        <section className="builderFormArea">
-          <div className="mobileProgress"><span style={{ width: ((step + 1) * 25) + "%" }} /></div>
-          <div className="formHeading"><span>0{step + 1} / 04</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
-
-          {step === 0 && <div className="formPanel">
-            <div className="avatarUpload"><span>{data.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><div><strong>Tu foto de perfil</strong><small>La imagen se habilitará con el almacenamiento.</small></div><b>＋</b></div>
-            <Field label="Nombre público" value={data.name} set={(value) => update("name", value)} placeholder="Tu nombre" />
-            <Field label="Tu frase principal" value={data.role} set={(value) => update("role", value)} placeholder="¿Qué hace especial tu contenido?" />
-            <label className="builderField"><span>Sobre ti <small>{data.bio.length}/220</small></span><textarea maxLength={220} value={data.bio} onChange={(event) => update("bio", event.target.value)} /></label>
-            <Field label="Ubicación" value={data.location} set={(value) => update("location", value)} placeholder="Ciudad, País" />
-            <Choice title="Tus nichos" options={nicheOptions} selected={data.niches} toggle={(value) => toggleList("niches", value)} />
-          </div>}
-
-          {step === 1 && <div className="formPanel">
-            <div className="choiceField"><span>Elige una plantilla</span><div className="themeCards">
-              <Theme name="Editorial" note="Expresiva y sofisticada" mode="editorial" current={data.template} choose={(value) => update("template", value)} />
-              <Theme name="Minimal" note="Limpia y contemporánea" mode="minimal" current={data.template} choose={(value) => update("template", value)} />
-              <Theme name="Bold" note="Potente y atrevida" mode="bold" current={data.template} choose={(value) => update("template", value)} />
-            </div></div>
-            <div className="choiceField colorChoice"><span>Color protagonista</span><div>{colors.map((color) => <button key={color} aria-label={"Elegir color " + color} className={data.accent === color ? "selected" : ""} style={{ background: color }} onClick={() => update("accent", color)} />)}<label><input aria-label="Color personalizado" type="color" value={data.accent} onChange={(event) => update("accent", event.target.value)} />＋</label></div></div>
-          </div>}
-
-          {step === 2 && <div className="formPanel">
-            <label className="mediaDrop"><input type="file" accept="video/*,image/*" multiple onChange={upload} /><span>↑</span><strong>Arrastra o selecciona tus archivos</strong><small>Videos MP4/MOV o imágenes JPG/PNG</small><b>Seleccionar archivos</b></label>
-            {media.length === 0 ? <div className="emptyMedia"><span>◌</span><p><strong>Aún no has subido contenido</strong>La vista previa usa ejemplos para que puedas diseñar primero.</p></div> : <div className="mediaList">{media.map((item) => <article key={item.id}><div className={item.framed ? "mediaThumb phoneThumb" : "mediaThumb"}>{item.type === "video" ? <video src={item.url} muted /> : <img src={item.url} alt="Contenido subido" />}</div><div><strong>{item.name}</strong><small>{item.type === "video" ? "Video" : "Imagen"}</small></div>{item.type === "video" && <button className={item.framed ? "frameSwitch on" : "frameSwitch"} onClick={() => toggleFrame(item.id)}><span /> Teléfono</button>}<button className="removeMedia" onClick={() => remove(item.id)} aria-label="Eliminar archivo">×</button></article>)}</div>}
-          </div>}
-
-          {step === 3 && <div className="formPanel">
-            <div className="twoFields"><Field label="Correo de contacto" type="email" value={data.email} set={(value) => update("email", value)} placeholder="hola@tucorreo.com" /><Field label="Instagram" value={data.instagram} set={(value) => update("instagram", value)} placeholder="@tuusuario" /></div>
-            <Choice title="Servicios que ofreces" options={serviceOptions} selected={data.services} toggle={(value) => toggleList("services", value)} services />
-            <div className="readyCard"><span>✦</span><div><strong>Ya casi está</strong><p>Revisa la vista previa y termina tu portafolio. Podrás volver a editarlo cuando quieras.</p></div></div>
-          </div>}
-
-          <div className="builderActions"><button className="backButton" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < 3 ? <button className="nextButton" onClick={() => setStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton finishButton" onClick={() => setFinalView(true)}>Ver mi portafolio <span>↗</span></button>}</div>
-        </section>
-
-        <aside className="livePreview"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>Se actualiza en vivo</strong></div><div className="deviceButtons"><button className="active" aria-label="Vista móvil">▯</button><button aria-label="Vista de computador">▭</button></div></div><PortfolioPreview data={data} media={media} /></aside>
-      </div>
-    </main>
-  );
-}
-
-function Field({ label, value, set, placeholder, type = "text" }: { label: string; value: string; set: (value: string) => void; placeholder: string; type?: string }) {
-  return <label className="builderField"><span>{label}</span><input type={type} value={value} onChange={(event) => set(event.target.value)} placeholder={placeholder} /></label>;
-}
-function Choice({ title, options, selected, toggle, services = false }: { title: string; options: string[]; selected: string[]; toggle: (value: string) => void; services?: boolean }) {
-  return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i>{selected.includes(option) ? "✓" : "+"}</i>{option}</button>)}</div></div>;
-}
-function Theme({ name, note, mode, current, choose }: { name: string; note: string; mode: string; current: string; choose: (value: string) => void }) {
-  return <button className={current === mode ? "selected" : ""} onClick={() => choose(mode)}><i className={"themePreview " + mode + "Preview"}><b>{mode === "bold" ? "LUNA—UGC" : name[0] + "."}</b><em>{mode === "bold" ? "MAKE IT REAL." : "Stories that feel real."}</em></i><strong>{name}</strong><small>{note}</small></button>;
-}
-function PortfolioPreview({ data, media, expanded = false }: { data: Portfolio; media: Media[]; expanded?: boolean }) {
-  const visible = media.slice(0, 4);
-  if (expanded) return <WorldPortfolio data={data} media={media} />;
-  const samples = ["SKINCARE", "TRAVEL", "LIFESTYLE", "BEAUTY"];
-  return <div className={(expanded ? "portfolioExperience expanded " : "portfolioExperience ") + "portfolioTheme-" + data.template}>
-    <header className="experienceTop">
-      <strong>{data.name || "Tu nombre"}<i>•</i></strong>
-      <nav><span>Selected work</span><span>About</span><a href={"mailto:" + data.email}>Let&apos;s talk ↗</a></nav>
-    </header>
-    <div className="experienceCanvas">
-      <section className="experienceCopy">
-        <p className="experienceOverline">UGC CREATOR · {data.location || "TU CIUDAD"}</p>
-        <h2><span>Ideas</span><em>que se sienten</em><b>reales.</b></h2>
-        <p className="experienceBio">{data.role || data.bio}</p>
-        <div className="experienceTags">{data.niches.map((niche) => <span key={niche}>{niche}</span>)}</div>
+  return <main className="builderApp">
+    <header className="builderTopbar"><a className="builderBrand" href="/">brilla<span>•</span></a><div className="builderStatus"><i className={saved ? "saved" : "saving"} />{saved ? "Borrador guardado" : "Guardando…"}</div><button className="previewAction" onClick={() => setFinalView(true)}>Ver portafolio ↗</button></header>
+    <div className="builderGrid">
+      <aside className="builderSidebar"><p>TU PORTAFOLIO</p><nav aria-label="Secciones del editor">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => setStep(index)}><span>{index < step ? "✓" : String(index + 1).padStart(2, "0")}</span><div><small>PASO {String(index + 1).padStart(2, "0")}</small><strong>{item[0]}</strong></div></button>)}</nav><div className="sidebarTip"><b>✦</b><p><strong>Dos formatos</strong>Elige una web profesional o una presentación horizontal.</p></div></aside>
+      <section className="builderFormArea">
+        <div className="mobileProgress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+        <div className="formHeading"><span>{String(step + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
+        {step === 0 && <div className="formPanel"><Field label="Nombre público" value={data.name} set={(v) => update("name", v)} placeholder="Tu nombre" /><Field label="Título profesional" value={data.title} set={(v) => update("title", v)} placeholder="Creadora UGC | Beauty & Lifestyle" /><TextArea label="Sobre ti" value={data.bio} set={(v) => update("bio", v)} /><Field label="Ubicación" value={data.location} set={(v) => update("location", v)} placeholder="Ciudad, País" /><Choice title="Nichos principales" options={nicheOptions} selected={data.niches} toggle={(v) => toggle("niches", v)} /></div>}
+        {step === 1 && <div className="formPanel"><div className="choiceField templateFamily"><span>Plantillas de página web <small>4 estilos profesionales</small></span><p>Sitios verticales con navegación, secciones y transiciones suaves.</p><div className="themeCards webThemeCards">{websiteOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "website" ? data.webTemplate : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "website", webTemplate: mode, fontStyle }))} />)}</div></div><div className="templateDivider"><span>O ELIGE UNA EXPERIENCIA PRESENTACIONAL</span></div><div className="choiceField templateFamily"><span>Plantillas presentacionales <small>7 estilos</small></span><p>Láminas horizontales con navegación por gestos y flechas.</p><div className="themeCards">{templateOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "presentation" ? data.template : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "presentation", template: mode, fontStyle }))} />)}</div></div><div className="choiceField"><span>Tipo de letra</span><div className="fontCards">{fontOptions.map((font) => <button key={font.value} className={data.fontStyle === font.value ? "selected" : ""} onClick={() => update("fontStyle", font.value)}><b>{font.sample}</b><span>{font.name}</span><small>{font.note}</small></button>)}</div></div><div className="choiceField colorChoice"><span>Color de acento del portafolio</span><div>{colors.map((color) => <button key={color} aria-label={`Elegir ${color}`} className={data.accent === color ? "selected" : ""} style={{ background: color }} onClick={() => update("accent", color)} />)}<label><input aria-label="Color personalizado" type="color" value={data.accent} onChange={(e) => update("accent", e.target.value)} />＋</label></div></div></div>}
+        {step === 2 && <div className="formPanel"><Field label="Título de campañas" value={data.campaignTitle} set={(v) => update("campaignTitle", v)} placeholder="Piezas UGC para campañas" /><Choice title="Categorías visibles en el portafolio" options={categories} selected={data.portfolioCategories} toggle={(v) => toggle("portfolioCategories", v)} /><Choice title="Sectores con los que trabajas" options={clientOptions} selected={data.clientTypes} toggle={(v) => toggle("clientTypes", v)} /><div className="categoryTabs" role="tablist">{data.portfolioCategories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}<small>{media.filter((m) => m.category === item).length}</small></button>)}</div>{data.portfolioCategories.length ? <label className="mediaDrop"><input type="file" accept="video/*,image/*" multiple onChange={upload} /><span>↑</span><strong>Agregar piezas a “{data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}”</strong><small>Fotos o videos verticales. Cada pieza aparecerá solo en esta categoría.</small><b>Seleccionar archivos</b></label> : <div className="emptyCategory">Selecciona al menos una categoría para agregar contenido.</div>}{media.length > 0 && <div className="mediaList">{media.map((item) => <article key={item.id} className="mediaRow"><div className="mediaThumb">{item.type === "video" ? <video src={item.url} muted /> : <img src={item.url} alt="Contenido subido" />}</div><div className="mediaInfo"><strong>{item.name}</strong><small>{item.category} · {item.type === "video" ? "Video" : "Foto"}</small>{item.type === "video" && <div className="mediaLinks"><input value={item.instagram} onChange={(e) => updateMedia(item.id, "instagram", e.target.value)} placeholder="Link de Instagram" /><input value={item.tiktok} onChange={(e) => updateMedia(item.id, "tiktok", e.target.value)} placeholder="Link de TikTok" /></div>}</div><button className="removeMedia" onClick={() => remove(item.id)} aria-label="Eliminar">×</button></article>)}</div>}<div className="brandUpload"><div><strong>Logos de marcas</strong><small>Sube las imágenes de las marcas con las que has trabajado.</small></div><label><input type="file" accept="image/*" multiple onChange={uploadBrands} />＋ Agregar logos</label></div>{brands.length > 0 && <div className="brandList">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={brand.name} /><span>{brand.name}</span><button onClick={() => removeBrand(brand.id)} aria-label={`Eliminar ${brand.name}`}>×</button></article>)}</div>}</div>}
+        {step === 3 && <div className="formPanel"><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} /><div className="metricPreview"><span><b>{data.womenAudience}</b><small>Mujeres</small></span><div><strong>{data.followers}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews}</strong><small>vistas mensuales</small></div></div></div>}
+        {step === 4 && <div className="formPanel"><Choice title="Cada video UGC incluye" options={includeOptions} selected={data.includes} toggle={(v) => toggle("includes", v)} services /><div className="twoFields"><Field label="Video UGC" value={data.videoRate} set={(v) => update("videoRate", v)} placeholder="$350.000 COP" /><Field label="Reel en colaboración" value={data.collabRate} set={(v) => update("collabRate", v)} placeholder="$400.000 COP" /><Field label="1 historia con CTA" value={data.storyRate} set={(v) => update("storyRate", v)} placeholder="$80.000 COP" /><Field label="Pack 3 historias" value={data.storyPackRate} set={(v) => update("storyPackRate", v)} placeholder="$210.000 COP" /></div><Field label="Derechos de pauta por mes" value={data.usageRate} set={(v) => update("usageRate", v)} placeholder="$80.000 COP / mes" /></div>}
+        {step === 5 && <div className="formPanel"><Choice title="Tipos de contenido" options={contentOptions} selected={data.contentTypes} toggle={(v) => toggle("contentTypes", v)} services /><div className="twoFields"><Field label="Correo" type="email" value={data.email} set={(v) => update("email", v)} placeholder="hola@tucorreo.com" /><Field label="WhatsApp" value={data.whatsapp} set={(v) => update("whatsapp", v)} placeholder="+57 300 000 0000" /><Field label="Instagram" value={data.instagram} set={(v) => update("instagram", v)} placeholder="@tuusuario" /><Field label="TikTok" value={data.tiktok} set={(v) => update("tiktok", v)} placeholder="@tuusuario" /></div><Field label="Disponibilidad" value={data.availability} set={(v) => update("availability", v)} placeholder="Disponible para campañas" /><Choice title="Servicios ofrecidos" options={serviceOptions} selected={data.services} toggle={(v) => toggle("services", v)} services /><div className="readyCard"><span>✦</span><div><strong>Tu presentación está lista</strong><p>Usa la rueda del mouse, el trackpad, las flechas o desliza para recorrerla.</p></div></div></div>}
+        <div className="builderActions"><button className="backButton" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => setStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton" onClick={() => setFinalView(true)}>Ver portafolio <span>↗</span></button>}</div>
       </section>
-      <section className="showreel" aria-label="Showreel de trabajos. Desliza horizontalmente para explorar.">
-        <div className="reelTrack">
-          {visible.length ? visible.map((item, index) => <article key={item.id} className={item.framed && item.type === "video" ? "reelCard phoneReel" : "reelCard"}>
-            <div className="reelNumber">0{index + 1}</div>{item.framed && item.type === "video" && <i className="reelNotch" />}
-            {item.type === "video" ? <video src={item.url} muted playsInline controls={expanded} /> : <img src={item.url} alt="Trabajo UGC" />}
-            <div className="reelCaption"><span>{data.niches[index % Math.max(data.niches.length, 1)] || "UGC"}</span><b>Ver proyecto ↗</b></div>
-          </article>) : samples.map((sample, index) => <article key={sample} className={index === 1 ? "reelCard phoneReel sampleReel sampleReel" + index : "reelCard sampleReel sampleReel" + index}>
-            <div className="reelNumber">0{index + 1}</div>{index === 1 && <i className="reelNotch" />}<span className="sampleOrb" /><div className="sampleTitle">{sample}<small>{index % 2 ? "content diary" : "brand story"}</small></div><span className="reelPlay">▶</span><div className="reelCaption"><span>{sample}</span><b>Ver proyecto ↗</b></div>
-          </article>)}
-        </div>
-      </section>
-      <div className="creatorStamp"><span>{data.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</span><p><strong>Disponible para crear</strong>{data.instagram}</p></div>
+      <aside className="livePreview"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>{data.format === "website" ? "Página web · cambios en vivo" : "Presentación horizontal · cambios en vivo"}</strong></div><small>{data.format === "website" ? "Scroll ↓" : "Desliza →"}</small></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} /> : <PortfolioDeck data={data} media={media} brands={brands} />}</aside>
     </div>
-    <footer className="experienceBottom"><div><i /> Disponible para proyectos</div><span>DESLIZA PARA EXPLORAR <b>→</b></span><a href={"mailto:" + data.email}>Hablemos <b>↗</b></a></footer>
+  </main>;
+}
+
+function Field({ label, value, set, placeholder, type = "text" }: { label: string; value: string; set: (v: string) => void; placeholder: string; type?: string }) { return <label className="builderField"><span>{label}</span><input type={type} value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} /></label>; }
+function TextArea({ label, value, set }: { label: string; value: string; set: (v: string) => void }) { return <label className="builderField"><span>{label}</span><textarea value={value} onChange={(e) => set(e.target.value)} /></label>; }
+function Choice({ title, options, selected, toggle, services = false }: { title: string; options: string[]; selected: string[]; toggle: (v: string) => void; services?: boolean }) { return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i>{selected.includes(option) ? "✓" : "+"}</i>{option}</button>)}</div></div>; }
+function Theme({ name, note, mode, font, defaultFont, current, choose }: { name: string; note: string; mode: string; font: string; defaultFont: string; current: string; choose: (mode: string, fontStyle: string) => void }) { return <button className={current === mode ? "selected" : ""} onClick={() => choose(mode, defaultFont)}><i className={`themePreview ${mode}`}><b>{name}</b><em>Aa</em><u /></i><strong>{name}</strong><small>{note}</small><span>{font}</span></button>; }
+
+function WebsitePortfolio({ data, media, brands, expanded = false }: { data: Portfolio; media: Media[]; brands: BrandAsset[]; expanded?: boolean }) {
+  const work = media.filter((item) => data.portfolioCategories.includes(item.category));
+  const groups = data.portfolioCategories.map((category) => ({ category, items: work.filter((item) => item.category === category) })).filter((group) => group.items.length);
+  const countries = data.topCountries.split("·").map((item) => item.trim()).filter(Boolean);
+  const webTemplate = websiteOptions.some((item) => item.mode === data.webTemplate) ? data.webTemplate : "pop";
+  const firstName = data.name.split(" ")[0] || data.name;
+  const ticker = [...data.niches, "Contenido UGC", data.location.split(",")[0]?.trim() || "Creators", ...data.contentTypes.slice(0, 3)].filter(Boolean);
+  const icons = ["✦", "♡", "☆", "❀", "◎", "✧", "⌂"];
+  return <div className={`websitePortfolio website-${webTemplate} font-${data.fontStyle} ${expanded ? "expanded" : "compact"}`} style={{ "--site-accent": data.accent } as CSSProperties}>
+    <header className="siteNav"><strong>{firstName}<i>✦</i></strong><nav><a href="#web-work">Trabajo</a><a href="#web-services">Servicios</a><a href="#web-rates">Tarifas</a><a className="navContact" href={`mailto:${data.email}`}>Hablemos ↗</a></nav></header>
+    <section className="siteHero webSection"><div className="webHeroCopy"><small><i>✦</i> UGC CREATOR — {data.location}</small><h1>{data.name}</h1><p className="heroRole">{data.title}</p><p className="heroBio">{data.bio}</p><div className="webHeroActions"><a className="heroCta" href="#web-work">Ver mi trabajo ↓</a><a className="heroGhost" href={`mailto:${data.email}`}>Escríbeme</a></div></div><div className="webHeroVisual"><MediaCard item={null} label="TU FOTO" index={0} /><span className="heroSticker st1">✦</span><span className="heroSticker st2">☆</span><em className="heroNote">{data.availability}</em></div></section>
+    <div className="webMarquee" aria-hidden><div>{Array.from({ length: 2 }, (_, dup) => ticker.map((word, i) => <span key={`${dup}-${i}`}>{word}<i>✦</i></span>))}</div></div>
+    <div className="webProof"><span><b>{data.followers}</b>seguidores</span><span><b>{data.monthlyViews}</b>vistas / mes</span><span><b>{data.womenAudience}</b>audiencia femenina</span><span><b>{String(data.niches.length).padStart(2, "0")}</b>nichos creativos</span></div>
+    <section className="webAbout webSection" id="web-about"><div className="webSectionTitle"><small>01 — SOBRE MÍ</small><h2>Historias reales que <em>conectan</em> con tu audiencia.</h2></div><div className="aboutBody"><p>{data.bio}</p><div className="webTags">{data.niches.map((niche) => <span key={niche}>{niche}</span>)}</div><div className="aboutContent"><b>CONTENIDO QUE CREO</b><p>{data.contentTypes.join(" · ")}</p></div></div></section>
+    {groups.length > 0 && <section className="siteWork webSection" id="web-work"><div className="webSectionTitle"><small>02 — PORTAFOLIO</small><h2>{data.campaignTitle}</h2></div>{groups.map((group, gi) => <article className="webProjectGroup" key={group.category}><header><h3><i>{icons[gi % icons.length]}</i>{group.category}</h3><span>{String(group.items.length).padStart(2, "0")} PIEZAS</span></header><div style={{ "--work-count": Math.min(group.items.length, 4) } as CSSProperties}>{group.items.map((item, index) => <MediaCard key={item.id} item={item} label={item.category} index={index} />)}</div></article>)}</section>}
+    {brands.length > 0 && <section className="webBrands webSection"><div className="webSectionTitle center"><small>03 — EXPERIENCIA</small><h2>Marcas que ya <em>brillaron</em> conmigo.</h2></div><div className="brandGrid">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={`Logo de ${brand.name}`} /><span>{brand.name}</span></article>)}</div><p className="brandSectors"><b>SECTORES</b>{data.clientTypes.join(" · ")}</p></section>}
+    <section className="webAudience webSection"><div className="audienceCopy"><small>04 — AUDIENCIA</small><h2>Una comunidad que <em>confía</em> en lo que recomiendo.</h2><div className="webNumbers"><span><b>{data.followers}</b>seguidores</span><span><b>{data.monthlyViews}</b>vistas / mes</span><span><b>{data.womenAudience}</b>mujeres</span></div><div className="audienceSocial"><span><b>IG</b>{data.instagram}</span><span><b>TK</b>{data.tiktok}</span></div></div><div className="webAudienceCard"><div className="webAudienceRing"><b>{data.womenAudience}</b><span>audiencia femenina</span></div><div className="countryBars">{countries.map((country, index) => <p key={country}><span>{country}</span><i style={{ width: `${Math.max(18, 88 - index * 18)}%` }} /></p>)}</div></div></section>
+    <section className="webServices webSection" id="web-services"><div className="webSectionTitle"><small>05 — SERVICIOS</small><h2>Todo lo que puedo <em>crear</em> para tu marca.</h2></div><div className="serviceCards">{data.services.map((service, index) => <article key={service}><span>{String(index + 1).padStart(2, "0")}</span><h3>{service}</h3><b>{icons[index % icons.length]}</b></article>)}</div></section>
+    <section className="webRates webSection" id="web-rates"><div className="webSectionTitle"><small>06 — TARIFAS</small><h2>Inversión clara, <em>sin sorpresas</em>.</h2></div><div className="rateBoard"><article className="rateHero"><small>EL FAVORITO ✦</small><h3>Video UGC</h3><b>{data.videoRate}</b><ul>{data.includes.map((include) => <li key={include}><i>✓</i>{include}</li>)}</ul></article><div className="rateGrid"><article><span>Reel en colaboración</span><b>{data.collabRate}</b></article><article><span>1 historia con CTA</span><b>{data.storyRate}</b></article><article><span>Pack de 3 historias</span><b>{data.storyPackRate}</b></article><article><span>Derechos de pauta</span><b>{data.usageRate}</b></article></div></div></section>
+    <section className="webContact webSection" id="web-contact"><small>¿CREAMOS ALGO JUNTOS?</small><h2>Tu marca tiene una historia. <em>Hagámosla brillar.</em></h2><a className="contactCta" href={`mailto:${data.email}`}>Empecemos un proyecto <span>↗</span></a><div className="contactGrid"><p><b>EMAIL</b>{data.email}</p><p><b>WHATSAPP</b>{data.whatsapp}</p><p><b>INSTAGRAM</b>{data.instagram}</p><p><b>TIKTOK</b>{data.tiktok}</p></div><em className="contactNote">{data.availability}</em></section>
+    <footer className="siteFooter"><strong>{data.name} ✦</strong><span>{data.location}</span><span>Hecho con brilla</span></footer>
   </div>;
 }
 
-
-function WorldPortfolio({ data, media }: { data: Portfolio; media: Media[] }) {
-  const [progress, setProgress] = useState(0);
-  const position = progress * 3;
-  const scene = Math.min(3, Math.round(position));
-  const worldMedia = media.slice(0, 3);
-  const layerStyle = (index: number) => {
-    const distance = index - position;
-    const magnitude = Math.abs(distance);
-    return {
-      opacity: Math.max(0, 1 - magnitude * 1.25),
-      transform: "translate3d(" + (distance * 72) + "%, " + (magnitude * 7) + "%, " + (-magnitude * 420) + "px) scale(" + Math.max(.72, 1 - magnitude * .12) + ")",
-      pointerEvents: magnitude < .45 ? "auto" : "none",
-    } as CSSProperties;
-  };
-  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const node = event.currentTarget;
-    const available = node.scrollHeight - node.clientHeight;
-    setProgress(available ? node.scrollTop / available : 0);
-  };
-
-  return <div className="worldScroller" onScroll={handleScroll}>
-    <div className="worldSticky" style={{ "--world-progress": progress } as CSSProperties}>
-      <header className="worldNav"><strong>{data.name}<i>•</i></strong><div><span>UGC CREATOR</span><a href={"mailto:" + data.email}>COLABOREMOS ↗</a></div></header>
-      <div className="worldProgress"><span>0{scene + 1}</span><div>{[0, 1, 2, 3].map((item) => <i key={item} className={scene === item ? "active" : ""} />)}</div><span>04</span></div>
-      <main className="worldStage">
-        <section className="worldLayer studioWorld" style={layerStyle(0)}>
-          <div className="worldCopy"><small>01 · BIENVENIDA</small><h1>Entra a mi<br /><em>mundo creativo.</em></h1><p>{data.role}</p><div className="worldTags">{data.niches.map((niche) => <span key={niche}>{niche}</span>)}</div></div>
-          <div className="studioDiorama">
-            <div className="studioPlatform" /><div className="backWall"><i /><i /><i /></div><div className="studioDesk"><span className="laptop">UGC</span><span className="productBottle" /><span className="coffee" /></div><div className="ringLight"><i>{data.name.split(" ").map((part) => part[0]).slice(0, 2).join("")}</i></div><div className="studioPlant"><i /><i /><i /></div>
-          </div>
-          <div className="floatingNote noteTop">✦ IDEAS QUE CONECTAN</div><div className="floatingNote noteBottom">{data.location}</div>
-        </section>
-
-        <section className="worldLayer contentWorld" style={layerStyle(1)}>
-          <div className="sceneLabel"><small>02 · SHOWREEL</small><h2>Historias para<br /><em>detener el scroll.</em></h2></div>
-          <div className="contentTunnel">
-            {(worldMedia.length ? worldMedia : [null, null, null]).map((item, index) => <article key={item?.id ?? index} className={(item?.framed || index === 1) ? "worldScreen worldPhone" : "worldScreen"}>
-              {(item?.framed || index === 1) && <i className="worldNotch" />}
-              {item ? item.type === "video" ? <video src={item.url} muted playsInline controls /> : <img src={item.url} alt="Trabajo UGC" /> : <div className={"worldSample sampleWorld" + index}><span>{data.niches[index] || ["BEAUTY", "TRAVEL", "LIFESTYLE"][index]}</span><b>0{index + 1}</b><i>▶</i></div>}
-            </article>)}
-          </div>
-          <div className="worldRibbon">CREATIVE DIRECTION ✦ AUTHENTIC STORIES ✦ SOCIAL FIRST ✦</div>
-        </section>
-
-        <section className="worldLayer serviceWorld" style={layerStyle(2)}>
-          <div className="sceneLabel servicesTitle"><small>03 · LO QUE HAGO</small><h2>Una idea.<br /><em>Muchas formas.</em></h2><p>{data.bio}</p></div>
-          <div className="serviceUniverse"><div className="serviceCore">CREA<br /><span>CONMIGO</span></div>{(data.services.length ? data.services : serviceOptions.slice(0, 5)).slice(0, 6).map((service, index) => <span key={service} className={"servicePlanet planet" + index}>{service}</span>)}</div>
-          <div className="worldStat"><strong>100%</strong><span>contenido<br />hecho con intención</span></div>
-        </section>
-
-        <section className="worldLayer contactWorld" style={layerStyle(3)}>
-          <div className="contactGlow" /><div className="contactPlanet"><span>✦</span></div>
-          <div className="contactMessage"><small>04 · HAGAMOS ALGO INCREÍBLE</small><h2>Tu marca.<br />Mi mirada.<br /><em>Una historia real.</em></h2><a href={"mailto:" + data.email}>HABLEMOS <span>↗</span></a></div>
-          <div className="contactDetails"><span>{data.instagram}</span><span>{data.email}</span><span>{data.location}</span></div>
-        </section>
-      </main>
-      <footer className="worldFooter"><span><i /> DISPONIBLE PARA PROYECTOS</span><div>SCROLL PARA VIAJAR <b>↓</b></div><span>BRILLA WORLD · 2026</span></footer>
+function PortfolioDeck({ data, media, brands, expanded = false }: { data: Portfolio; media: Media[]; brands: BrandAsset[]; expanded?: boolean }) {
+  const deck = useRef<HTMLDivElement>(null); const [active, setActive] = useState(0); const dragging = useRef<{ x: number; left: number } | null>(null);
+  const visibleCategories = data.portfolioCategories.filter((item) => media.some((asset) => asset.category === item));
+  const slideCount = 1 + visibleCategories.length + (brands.length ? 1 : 0) + 4;
+  const go = (index: number) => { const next = Math.max(0, Math.min(slideCount - 1, index)); deck.current?.scrollTo({ left: next * deck.current.clientWidth, behavior: "smooth" }); };
+  useEffect(() => { if (active >= slideCount) { const last = slideCount - 1; setActive(last); deck.current?.scrollTo({ left: last * deck.current.clientWidth }); } }, [active, slideCount]);
+  const onScroll = (event: UIEvent<HTMLDivElement>) => { const node = event.currentTarget; setActive(Math.round(node.scrollLeft / Math.max(1, node.clientWidth))); };
+  const onWheel = (event: WheelEvent<HTMLDivElement>) => { if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) { event.preventDefault(); event.currentTarget.scrollLeft += event.deltaY; } };
+  const pointerDown = (event: PointerEvent<HTMLDivElement>) => { dragging.current = { x: event.clientX, left: event.currentTarget.scrollLeft }; event.currentTarget.setPointerCapture(event.pointerId); };
+  const pointerMove = (event: PointerEvent<HTMLDivElement>) => { if (dragging.current) event.currentTarget.scrollLeft = dragging.current.left - (event.clientX - dragging.current.x); };
+  const pointerUp = (event: PointerEvent<HTMLDivElement>) => { dragging.current = null; event.currentTarget.releasePointerCapture(event.pointerId); go(Math.round(event.currentTarget.scrollLeft / Math.max(1, event.currentTarget.clientWidth))); };
+  const selected = (category: string, count: number, offset = 0): Array<Media | null> => media.filter((item) => item.category === category).slice(offset, offset + count);
+  const template = templateOptions.some((item) => item.mode === data.template) ? data.template : "gallery"; const common = { data, active, mediaFor: selected };
+  let position = 0;
+  const slides = [<IntroSlide key="intro" {...common} index={position++} />,
+    ...visibleCategories.map((category) => category === "Fotografía" ? <PhotoSlide key={category} {...common} index={position++} /> : <GallerySlide key={category} {...common} index={position++} category={category} title={category === "Campañas" ? data.campaignTitle : category === "Cabello" ? "Cuidado del cabello" : category === "Beauty" ? "Skincare, maquillaje y perfumería" : category === "Familia" ? "Family & home vibes" : category === "Empresas" ? "Empresas y otros productos" : "Hoteles, restaurantes y lugares"} icon={category === "Beauty" ? "✦" : category === "Familia" ? "⌂" : category === "Lugares" ? "⌖" : "♡"} />),
+    ...(brands.length ? [<BrandsSlide key="brands" data={data} brands={brands} active={active} index={position++} />] : []),
+    <AudienceSlide key="audience" {...common} index={position++} />,<RateSlide key="rate-main" {...common} index={position++} secondary={false} />,<RateSlide key="rate-secondary" {...common} index={position++} secondary />,<ContactSlide key="contact" {...common} index={position++} />];
+  return <div className={`portfolioDeck deck-${template} font-${data.fontStyle} ${expanded ? "expanded" : "compact"}`} style={{ "--deck-accent": data.accent } as CSSProperties}>
+    <div ref={deck} className="deckTrack" tabIndex={0} aria-label="Portafolio UGC en presentación horizontal" onScroll={onScroll} onWheel={onWheel} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onKeyDown={(e) => { if (e.key === "ArrowRight") go(active + 1); if (e.key === "ArrowLeft") go(active - 1); }}>
+      {slides}
     </div>
-    <div className="worldScrollSpace" aria-hidden="true" />
+    <div className="deckControls" aria-label="Controles de presentación"><button onClick={() => go(active - 1)} disabled={active === 0}>←</button><div>{Array.from({ length: slideCount }, (_, i) => <button key={i} className={active === i ? "active" : ""} onClick={() => go(i)} aria-label={`Ir a lámina ${i + 1}`} />)}</div><span>{String(active + 1).padStart(2, "0")} / {slideCount}</span><button onClick={() => go(active + 1)} disabled={active === slideCount - 1}>→</button></div>
   </div>;
 }
+
+type SlideProps = { data: Portfolio; active: number; index: number; mediaFor: (category: string, count: number, offset?: number) => Array<Media | null> };
+function IntroSlide({ data, active, index }: SlideProps) { return <section className={`deckSlide intro ${active === index ? "isActive" : ""}`}><div className="introCopy"><span>CREADORA DE CONTENIDO UGC</span><h1>{data.title}</h1><p>{data.bio}</p><small>{data.location}</small></div><MediaCard item={null} label="TU RETRATO" index={0} /></section>; }
+function GallerySlide({ active, index, mediaFor, category, title, icon }: SlideProps & { category: string; title: string; icon?: string }) { const items = mediaFor(category, 6); return <section className={`deckSlide gallery ${active === index ? "isActive" : ""}`}><div className="slideTitle">{icon && <i>{icon}</i>}<h2>{title}</h2></div><div className={`galleryRow count-${items.length}`} style={{ "--media-count": items.length } as CSSProperties}>{items.map((item, i) => <MediaCard key={item?.id ?? `${index}-${i}`} item={item} label={category} index={i} />)}</div></section>; }
+function PhotoSlide({ data, active, index, mediaFor }: SlideProps) { const items = mediaFor("Fotografía", 6); return <section className={`deckSlide photoMosaic count-${items.length} ${active === index ? "isActive" : ""}`}><h2>Fotografía UGC</h2><div>{items.map((item, i) => <MediaCard key={item?.id ?? i} item={item} label={data.niches[i % Math.max(1, data.niches.length)] || "UGC"} index={i} />)}</div></section>; }
+function BrandsSlide({ brands, active, index }: { data: Portfolio; brands: BrandAsset[]; active: number; index: number }) { return <section className={`deckSlide brands ${active === index ? "isActive" : ""}`}><small>EXPERIENCIA</small><h2>Marcas con las que he trabajado</h2><div>{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={`Logo de ${brand.name}`} /><span>{brand.name}</span></article>)}</div></section>; }
+function AudienceSlide({ data, active, index }: SlideProps) { const countries = data.topCountries.split("·").map((item) => item.trim()).filter(Boolean); return <section className={`deckSlide audience ${active === index ? "isActive" : ""}`}><div><small>MI AUDIENCIA</small><h2>Mi comunidad conecta principalmente con mujeres.</h2><div className="audienceRing"><strong>{data.womenAudience}</strong><span>mujeres</span></div><div className="audienceStats"><span><b>{data.followers}</b>seguidores</span><span><b>{data.monthlyViews}</b>vistas / mes</span></div></div><div className="countryPanel"><h3>Principales ubicaciones</h3>{countries.map((country, i) => <p key={country}><span>{country}</span><i style={{ width: `${Math.max(14, 86 - i * 17)}%` }} /></p>)}<div className="socialCard"><b>{data.instagram}</b><span>{data.name}</span><small>{data.niches.join(" · ")}</small></div></div></section>; }
+function RateSlide({ data, active, index, secondary }: SlideProps & { secondary: boolean }) { return <section className={`deckSlide rates ${secondary ? "secondary" : ""} ${active === index ? "isActive" : ""}`}><div className="rateCopy"><small>TARIFAS</small>{secondary ? <><h2>Historias & pauta</h2><Rate name="Reel en colaboración" price={data.collabRate} /><Rate name="1 historia con CTA" price={data.storyRate} /><Rate name="Pack de 3 historias" price={data.storyPackRate} /><Rate name="Derechos de pauta / mes" price={data.usageRate} /></> : <><h2>Video UGC</h2><p>Incluye:</p><ul>{data.includes.map((item) => <li key={item}>✓ {item}</li>)}</ul><strong className="mainPrice">{data.videoRate}</strong></>}</div><div className="rateVisual"><span>UGC</span><i>✦</i><b>{secondary ? "SOCIAL" : "CREATE"}</b></div></section>; }
+function Rate({ name, price }: { name: string; price: string }) { return <div className="rateLine"><span>{name}</span><strong>{price}</strong></div>; }
+function ContactSlide({ data, active, index }: SlideProps) { return <section className={`deckSlide contact ${active === index ? "isActive" : ""}`}><div className="phoneFrame"><MediaCard item={null} label="LET'S CREATE" index={0} /></div><div className="contactCopy"><small>CONTENIDO COMO</small><h2>{data.contentTypes.join(" · ")}</h2><em>¡Trabajemos juntos!</em><p><b>WhatsApp</b>{data.whatsapp}</p><p><b>Email</b>{data.email}</p><p><b>Instagram</b>{data.instagram}</p><span>{data.availability}</span></div></section>; }
+function MediaCard({ item, label, index }: { item: Media | null; label: string; index: number }) { return <article className={`deckMedia media-${index} ${item?.type === "video" ? "videoCard" : ""}`}>{item ? item.type === "video" ? <><i className="videoNotch" /><video src={item.url} muted playsInline controls /><div className="videoSocials">{item.instagram && <a href={item.instagram} target="_blank" rel="noreferrer" aria-label="Ver en Instagram">IG</a>}{item.tiktok && <a href={item.tiktok} target="_blank" rel="noreferrer" aria-label="Ver en TikTok">TK</a>}</div></> : <img src={item.url} alt={`Pieza UGC de ${label}`} /> : <div className="mediaPlaceholder"><span>{label}</span><b>{String(index + 1).padStart(2, "0")}</b><i>▶</i></div>}</article>; }

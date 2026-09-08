@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { DM_Sans, Fraunces } from "next/font/google";
+import { Anton, Caveat, DM_Sans, Fraunces, Space_Grotesk } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 
 const sans = DM_Sans({ variable: "--font-sans", subsets: ["latin"] });
 const serif = Fraunces({ variable: "--font-serif", subsets: ["latin"] });
+const grotesk = Space_Grotesk({ variable: "--font-grotesk", subsets: ["latin"] });
+const hand = Caveat({ variable: "--font-hand", subsets: ["latin"] });
+const display = Anton({ variable: "--font-display", weight: "400", subsets: ["latin"] });
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -33,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es">
-      <body className={`${sans.variable} ${serif.variable}`}>{children}</body>
+      <body className={`${sans.variable} ${serif.variable} ${grotesk.variable} ${hand.variable} ${display.variable}`}>{children}</body>
     </html>
   );
 }
