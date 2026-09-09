@@ -56,12 +56,20 @@ test("offers six narrative UGC portfolio experiences wired to the editor", async
 });
 
 test("keeps the live portfolio preview visible while editing on mobile", async () => {
-  const styles = await readFile(new URL("../app/crear/crear.css", import.meta.url), "utf8");
+  const [editor, styles] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/crear.css", import.meta.url), "utf8"),
+  ]);
 
   assert.match(styles, /@media\(max-width:680px\)[\s\S]*\.livePreview\{[^}]*display:block/);
   assert.match(styles, /\.livePreview\{[^}]*position:sticky/);
   assert.match(styles, /\.livePreview>\.websitePortfolio\.compact/);
   assert.match(styles, /\.livePreview>\.portfolioExperiencePage\.compact/);
+  assert.match(editor, /mobilePreviewOpen/);
+  assert.match(editor, /mobilePreviewToggle/);
+  assert.match(editor, /Ocultar/);
+  assert.match(editor, /Mostrar/);
+  assert.match(styles, /\.livePreview\.mobilePreviewCollapsed/);
 });
 
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
