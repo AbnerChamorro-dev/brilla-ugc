@@ -21,6 +21,7 @@ const templateNames: Record<string, string> = {
   blue: "Blue OS", whimsy: "Whimsy", sage: "Sage Journal", muse: "Muse Editorial",
   creator: "Creator Studio", aura: "Aura Grid", noir: "Noir Atelier", sorbet: "Sorbet Studio",
   lavender: "Lavender Cloud", mint: "Mint Picnic", electric: "Electric Pulse",
+  pop: "Sunny Pop", retro: "Retro Zine", chic: "Éditorial Chic", bold: "Neo Brutal",
 };
 
 function safePdfText(value: string) {

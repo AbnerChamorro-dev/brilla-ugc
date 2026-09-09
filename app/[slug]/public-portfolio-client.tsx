@@ -54,7 +54,7 @@ function recordAnalyticsEvent(slug: string, event: "view" | "click", target: Ana
 
 export default function PublicPortfolioClient({ slug, data, media, brands }: { slug: string; data: Portfolio; media: Media[]; brands: BrandAsset[] }) {
   const selectedTemplate = data.format === "website" ? data.webTemplate : data.template;
-  const schema = templateSchemas[selectedTemplate] ?? templateSchemas.muse;
+  const schema = templateSchemas[selectedTemplate] ?? templateSchemas.pop;
   const page = useRef<HTMLElement>(null);
 
   useEffect(() => {
