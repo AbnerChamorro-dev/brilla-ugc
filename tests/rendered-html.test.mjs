@@ -25,6 +25,45 @@ test("keeps the Brilla product and native Next.js routes", async () => {
   }
 });
 
+test("offers six narrative UGC portfolio experiences wired to the editor", async () => {
+  const [editor, experiences, styles, additions, pdf] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-experiences.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-experiences.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-additions.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-pdf.ts", import.meta.url), "utf8"),
+  ]);
+
+  for (const template of ["Creator Feed", "Campaign Stories", "Personal Scrapbook", "Showreel First", "Talent Profile", "Postcard Journal"]) {
+    assert.match(editor, new RegExp(template));
+    assert.match(pdf, new RegExp(template));
+  }
+  assert.match(editor, /caseStudies:\s*Record<string, CaseStudy>/);
+  assert.match(editor, /Brief de la marca/);
+  assert.match(editor, /Así creo contenido · entrada de diario/);
+  assert.match(editor, /label="Idiomas"/);
+  assert.match(experiences, /function CampaignStoriesPortfolio/);
+  assert.match(experiences, /function PersonalScrapbookPortfolio/);
+  assert.match(experiences, /function ShowreelFirstPortfolio/);
+  assert.match(experiences, /function TalentProfilePortfolio/);
+  assert.match(experiences, /function PostcardJournalPortfolio/);
+  assert.match(experiences, /usePhotoAccent/);
+  assert.match(styles, /\.campaignStories/);
+  assert.match(styles, /\.personalScrapbook/);
+  assert.match(styles, /\.showreelFirst/);
+  assert.match(styles, /\.talentProfile/);
+  assert.match(additions, /\.postcardJournal/);
+});
+
+test("keeps the live portfolio preview visible while editing on mobile", async () => {
+  const styles = await readFile(new URL("../app/crear/crear.css", import.meta.url), "utf8");
+
+  assert.match(styles, /@media\(max-width:680px\)[\s\S]*\.livePreview\{[^}]*display:block/);
+  assert.match(styles, /\.livePreview\{[^}]*position:sticky/);
+  assert.match(styles, /\.livePreview>\.websitePortfolio\.compact/);
+  assert.match(styles, /\.livePreview>\.portfolioExperiencePage\.compact/);
+});
+
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
   const [editor, account, layout, authRedirectHandler, authRedirect, migration] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),

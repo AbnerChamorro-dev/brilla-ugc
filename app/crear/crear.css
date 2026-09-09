@@ -30,3 +30,20 @@
 .identityAuthOverlay{position:fixed;z-index:500;inset:0;display:grid;place-items:center;padding:24px;background:#17132f99;backdrop-filter:blur(12px);animation:authOverlayIn .2s ease-out}.identityAuthCard{position:relative;width:min(500px,100%);padding:38px;border:1px solid #ffffff99;border-radius:30px;color:#17132f;background:#fff;box-shadow:0 30px 100px #0b082755;animation:authCardIn .28s cubic-bezier(.2,.8,.2,1)}.identityAuthClose{position:absolute;right:18px;top:18px;width:34px;height:34px;border:0;border-radius:50%;color:#6f6884;background:#f1eef9;cursor:pointer;font-size:1.2rem}.identityAuthMark{display:grid;place-items:center;width:52px;height:52px;margin-bottom:22px;border-radius:16px;color:#211a49;background:#70f0cf;font-size:1.25rem}.identityAuthCard>small{display:block;color:#6d4dff;font-size:.6rem;font-weight:850;letter-spacing:.14em}.identityAuthCard h2{margin:12px 0 10px;font:560 clamp(2.35rem,5vw,3.6rem)/.95 var(--font-serif),serif;letter-spacing:-.055em}.identityAuthCard>p{margin:0 0 22px;color:#6c6680;font-size:.82rem;line-height:1.6}.identityAuthPromise{display:flex;align-items:center;gap:12px;margin-bottom:18px;padding:14px;border-radius:16px;background:#f1fff9}.identityAuthPromise>span{display:grid;place-items:center;width:36px;height:36px;flex:0 0 auto;border-radius:12px;color:#174b3e;background:#70f0cf;font-weight:900}.identityAuthPromise div{display:grid;gap:3px}.identityAuthPromise strong{font-size:.72rem}.identityAuthPromise small{color:#61736e;font-size:.59rem;line-height:1.4}.identityAuthError{margin:0 0 12px;padding:11px 13px;border-radius:12px;color:#8e2848;background:#fff0f4;font-size:.64rem;line-height:1.45}.googleContinue{display:grid;grid-template-columns:34px 1fr 24px;align-items:center;width:100%;padding:10px 14px 10px 11px;border:0;border-radius:999px;color:#fff;background:#211a49;cursor:pointer;font-size:.76rem;font-weight:800;box-shadow:0 14px 34px #211a4924}.googleContinue>b{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;color:#4285f4;background:#fff;font:800 1rem Arial,sans-serif}.googleContinue>span{color:#70f0cf;font-size:1.05rem}.googleContinue:disabled{cursor:wait;opacity:.65}.identityAuthBack{display:block;margin:15px auto 0;padding:7px;border:0;color:#746d89;background:transparent;cursor:pointer;font-size:.62rem;font-weight:700}@keyframes authOverlayIn{from{opacity:0}}@keyframes authCardIn{from{opacity:0;transform:translateY(18px) scale(.98)}}
 @media(max-width:680px){.identityAuthOverlay{align-items:end;padding:12px}.identityAuthCard{padding:32px 22px 25px;border-radius:26px}.identityAuthCard h2{font-size:2.65rem}}
 @media(prefers-reduced-motion:reduce){.identityAuthOverlay,.identityAuthCard{animation:none}}
+
+/* Mobile editing keeps a compact live preview visible above the form. */
+@media(max-width:680px){
+  .builderTopbar{position:sticky;z-index:80;top:0}
+  .builderGrid{display:flex;flex-direction:column}
+  .builderFormArea{order:2}
+  .livePreview{position:sticky;z-index:35;top:62px;order:1;display:block;height:clamp(220px,36svh,300px);padding:10px 14px 14px;border-bottom:1px solid #ffffff18;box-shadow:0 16px 34px #17132f26}
+  .previewHeader{height:34px;align-items:center}
+  .previewHeader>div{display:flex;align-items:center;gap:7px}
+  .previewHeader span{font-size:.42rem}
+  .previewHeader strong{font-size:.52rem}
+  .previewHeader>small{font-size:.44rem}
+  .livePreview>.websitePortfolio.compact,
+  .livePreview>.creatorFeed.compact,
+  .livePreview>.portfolioExperiencePage.compact{height:calc(100% - 34px);min-height:0;border-radius:7px}
+  .livePreview>.portfolioDeck.compact{max-height:calc(100% - 34px);margin:auto}
+}

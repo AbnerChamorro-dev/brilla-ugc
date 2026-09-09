@@ -22,6 +22,8 @@ const templateNames: Record<string, string> = {
   creator: "Creator Studio", aura: "Aura Grid", noir: "Noir Atelier", sorbet: "Sorbet Studio",
   lavender: "Lavender Cloud", mint: "Mint Picnic", electric: "Electric Pulse",
   pop: "Sunny Pop", retro: "Retro Zine", chic: "Éditorial Chic", bold: "Neo Brutal",
+  feed: "Creator Feed", stories: "Campaign Stories", personal: "Personal Scrapbook",
+  showreel: "Showreel First", talent: "Talent Profile", postcard: "Postcard Journal",
 };
 
 function safePdfText(value: string) {
@@ -54,7 +56,7 @@ function mix(first: RGB, second: RGB, amount: number) {
 
 function themeFor(portfolio: Portfolio): PdfTheme {
   const templateId = portfolio.format === "website" ? portfolio.webTemplate : portfolio.template;
-  const dark = new Set(["creator", "noir", "electric", "studio", "art", "blue"]).has(templateId);
+  const dark = new Set(["creator", "noir", "electric", "studio", "art", "blue", "showreel"]).has(templateId);
   const accent = color(portfolio.accent, "#6d4dff");
   const paper = dark ? color("#f4f1ff", "#f4f1ff") : color("#fffdf8", "#fffdf8");
   return {

@@ -17,13 +17,26 @@ import {
   resolveCurrentLegalConsent,
 } from "../lib/legal-consent";
 import { getSupabaseBrowserClient } from "../lib/supabase";
+import {
+  CampaignStoriesPortfolio,
+  CreatorFeedPortfolio,
+  PersonalScrapbookPortfolio,
+  PostcardJournalPortfolio,
+  ShowreelFirstPortfolio,
+  TalentProfilePortfolio,
+} from "./portfolio-experiences";
 import "./crear.css";
 import "./templates.css";
 import "./website.css";
 import "./template-refresh.css";
+import "./creator-feed.css";
+import "./portfolio-experiences.css";
+import "./portfolio-additions.css";
 
+export type CaseStudy = { client: string; brief: string; hook: string; result: string; testimonial: string };
 export type Portfolio = {
   name: string; title: string; bio: string; location: string; niches: string[]; format: "website" | "presentation"; webTemplate: string; template: string; fontStyle: string; accent: string; portfolioCategories: string[];
+  creativeDiary: string; languages: string; caseStudies: Record<string, CaseStudy>;
   campaignTitle: string; contentTypes: string[]; clientTypes: string[]; services: string[]; includes: string[];
   followers: string; monthlyViews: string; womenAudience: string; topCountries: string;
   videoRate: string; collabRate: string; storyRate: string; storyPackRate: string; usageRate: string;
@@ -243,6 +256,12 @@ const websiteOptions = [
   { name: "Retro Zine", note: "Collage scrapbook · polaroids y cinta", mode: "retro", font: "Editorial", defaultFont: "editorial" },
   { name: "Éditorial Chic", note: "Elegante y profesional · aire de revista", mode: "chic", font: "Editorial", defaultFont: "editorial" },
   { name: "Neo Brutal", note: "Audaz y juvenil · bordes y sombras duras", mode: "bold", font: "Magazine", defaultFont: "magazine" },
+  { name: "Creator Feed", note: "Perfil social · UGC nativo y piezas fijadas", mode: "feed", font: "Moderna", defaultFont: "modern" },
+  { name: "Campaign Stories", note: "Casos editoriales · estrategia y resultados", mode: "stories", font: "Editorial", defaultFont: "editorial" },
+  { name: "Personal Scrapbook", note: "Diario creativo · collage íntimo", mode: "personal", font: "Romántica", defaultFont: "romantic" },
+  { name: "Showreel First", note: "Video protagonista · recorrido cinematográfico", mode: "showreel", font: "Moderna", defaultFont: "modern" },
+  { name: "Talent Profile", note: "Perfil de agencia · lectura comercial", mode: "talent", font: "Editorial", defaultFont: "editorial" },
+  { name: "Postcard Journal", note: "Bitácora viajera · lugares y descubrimientos", mode: "postcard", font: "Magazine", defaultFont: "magazine" },
 ];
 export const templateSchemas: Record<string, TemplateSchema> = {
   gallery: { id: "gallery", format: "presentation", categoryLimit: 6, photoLimit: 5, portrait: true, contactVisual: true, label: "hasta 6 piezas por categoría" },
@@ -264,10 +283,17 @@ export const templateSchemas: Record<string, TemplateSchema> = {
   retro: { id: "retro", format: "website", categoryLimit: 5, photoLimit: 5, portrait: true, contactVisual: false, label: "hasta 5 piezas por categoría" },
   chic: { id: "chic", format: "website", categoryLimit: 4, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 fotos y 4 videos por categoría" },
   bold: { id: "bold", format: "website", categoryLimit: 6, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 piezas por categoría" },
+  feed: { id: "feed", format: "website", categoryLimit: 6, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 piezas por categoría" },
+  stories: { id: "stories", format: "website", categoryLimit: 4, photoLimit: 4, portrait: true, contactVisual: false, label: "hasta 4 piezas por caso" },
+  personal: { id: "personal", format: "website", categoryLimit: 6, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 piezas por categoría" },
+  showreel: { id: "showreel", format: "website", categoryLimit: 8, photoLimit: 8, portrait: true, contactVisual: false, label: "hasta 8 piezas por categoría" },
+  talent: { id: "talent", format: "website", categoryLimit: 6, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 piezas por categoría" },
+  postcard: { id: "postcard", format: "website", categoryLimit: 5, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 fotos y 5 videos por categoría" },
 };
 const initial: Portfolio = {
   name: "Sofía Mendoza", title: "Creadora de Contenido UGC | Beauty, Lifestyle & Travel.",
   bio: "Creo contenido auténtico, cercano y estratégico que muestra procesos y resultados reales para generar confianza y conexión con la audiencia.",
+  creativeDiary: "Me gusta comenzar cada idea observando cómo una persona usaría el producto en su vida real. Después convierto ese momento cotidiano en una historia sencilla, visual y fácil de recordar.", languages: "Español", caseStudies: {},
   location: "Bogotá, Colombia", niches: ["Beauty", "Lifestyle", "Travel"], format: "website", webTemplate: "pop", template: "gallery", fontStyle: "modern", accent: "#c15f7a", portfolioCategories: categories,
   campaignTitle: "Piezas UGC para campañas publicitarias", contentTypes: ["Unboxings", "Vlogs", "Testimonios", "Tutoriales"],
   clientTypes: ["Belleza", "Skincare", "Hogar", "Hoteles", "Productos"], services: ["Video UGC", "Fotografía UGC", "Reel colaborativo", "Historias"],
@@ -284,7 +310,10 @@ function restorePortfolio(value: unknown): Portfolio {
     : {};
   delete stored.password;
   delete stored.visibility;
-  return { ...initial, ...stored } as Portfolio;
+  const caseStudies = stored.caseStudies && typeof stored.caseStudies === "object" && !Array.isArray(stored.caseStudies)
+    ? stored.caseStudies as Record<string, CaseStudy>
+    : initial.caseStudies;
+  return { ...initial, ...stored, caseStudies } as Portfolio;
 }
 
 export default function CreatePortfolio() {
@@ -629,6 +658,20 @@ function PortfolioEditor() {
   }, [user, cloudReady, localAssetsReady]);
 
   const update = (field: keyof Portfolio, value: string | string[]) => { setSaved(false); setData((current) => ({ ...current, [field]: value })); };
+  const updateCaseStudy = (field: keyof CaseStudy, value: string) => {
+    const activeCategory = data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0] ?? categories[0];
+    setSaved(false);
+    setData((current) => ({
+      ...current,
+      caseStudies: {
+        ...current.caseStudies,
+        [activeCategory]: {
+          ...(current.caseStudies[activeCategory] ?? { client: "", brief: "", hook: "", result: "", testimonial: "" }),
+          [field]: value,
+        },
+      },
+    }));
+  };
   const toggle = (field: "niches" | "services" | "contentTypes" | "clientTypes" | "includes" | "portfolioCategories", value: string) => update(field, data[field].includes(value) ? data[field].filter((item) => item !== value) : [...data[field], value]);
   const rememberLocalAsset = (asset: StoredAsset) => {
     localAssetsRef.current = [...localAssetsRef.current.filter((item) => item.kind !== asset.kind || item.id !== asset.id), asset];
@@ -943,7 +986,8 @@ function PortfolioEditor() {
         <div className="mobileProgress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
         <div className="formHeading"><span>{String(step + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
         {assetError && <div className="assetSyncNotice" role="alert"><span>!</span><p>{assetError}</p><button type="button" onClick={() => setAssetError("")} aria-label="Cerrar aviso">×</button></div>}
-        {step === 1 && <div className="formPanel"><AssetSlot title="Retrato principal" text="Aparece en la portada de todas las plantillas." media={portrait} accept="image/*,video/*" onChange={(event) => uploadSpecial("__portrait", event)} onRemove={() => portrait && remove(portrait.id)} /><Field label="Nombre público" value={data.name} set={(v) => update("name", v)} placeholder="Tu nombre" /><Field label="Título profesional" value={data.title} set={(v) => update("title", v)} placeholder="Creadora UGC | Beauty & Lifestyle" /><TextArea label="Sobre ti" value={data.bio} set={(v) => update("bio", v)} /><Field label="Ubicación" value={data.location} set={(v) => update("location", v)} placeholder="Ciudad, País" /><Choice title="Nichos principales" options={nicheOptions} selected={data.niches} toggle={(v) => toggle("niches", v)} /></div>}
+        {step === 2 && data.format === "website" && data.webTemplate === "stories" && data.portfolioCategories.length > 0 && <div className="formPanel"><div className="schemaSummary"><span>✎</span><p><strong>Historia del caso · {data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}</strong><small>Convierte esta categoría en un caso de campaña. Puedes dejar vacío lo que aún no tengas.</small></p></div><Field label="Marca o cliente" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { client: "" }).client} set={(v) => updateCaseStudy("client", v)} placeholder="Nombre de la marca" /><TextArea label="Brief de la marca" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { brief: "" }).brief} set={(v) => updateCaseStudy("brief", v)} /><Field label="Hook de apertura" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { hook: "" }).hook} set={(v) => updateCaseStudy("hook", v)} placeholder="La primera frase del video" /><TextArea label="Resultado" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { result: "" }).result} set={(v) => updateCaseStudy("result", v)} /><TextArea label="Testimonio" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { testimonial: "" }).testimonial} set={(v) => updateCaseStudy("testimonial", v)} /></div>}
+        {step === 1 && <div className="formPanel"><AssetSlot title="Retrato principal" text="Aparece en la portada de todas las plantillas." media={portrait} accept="image/*,video/*" onChange={(event) => uploadSpecial("__portrait", event)} onRemove={() => portrait && remove(portrait.id)} /><Field label="Nombre público" value={data.name} set={(v) => update("name", v)} placeholder="Tu nombre" /><Field label="Título profesional" value={data.title} set={(v) => update("title", v)} placeholder="Creadora UGC | Beauty & Lifestyle" /><TextArea label="Sobre ti" value={data.bio} set={(v) => update("bio", v)} />{data.format === "website" && ["personal", "postcard"].includes(data.webTemplate) && <TextArea label="Así creo contenido · entrada de diario" value={data.creativeDiary} set={(v) => update("creativeDiary", v)} />}{data.format === "website" && data.webTemplate === "talent" && <Field label="Idiomas" value={data.languages} set={(v) => update("languages", v)} placeholder="Español · Inglés" />}<Field label="Ubicación" value={data.location} set={(v) => update("location", v)} placeholder="Ciudad, País" /><Choice title="Nichos principales" options={nicheOptions} selected={data.niches} toggle={(v) => toggle("niches", v)} /></div>}
         {step === 0 && <div className="formPanel"><div className="choiceField templateFamily"><span>Plantillas de página web <small>{websiteOptions.length} estilos profesionales</small></span><p>Sitios verticales con navegación, secciones y transiciones suaves.</p><div className="themeCards webThemeCards">{websiteOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "website" ? data.webTemplate : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "website", webTemplate: mode, fontStyle }))} />)}</div></div><div className="templateDivider"><span>O ELIGE UNA EXPERIENCIA PRESENTACIONAL</span></div><div className="choiceField templateFamily"><span>Plantillas presentacionales <small>7 estilos</small></span><p>Láminas horizontales con navegación por gestos y flechas.</p><div className="themeCards">{templateOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "presentation" ? data.template : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "presentation", template: mode, fontStyle }))} />)}</div></div><div className="choiceField"><span>Tipo de letra</span><div className="fontCards">{fontOptions.map((font) => <button key={font.value} className={data.fontStyle === font.value ? "selected" : ""} onClick={() => update("fontStyle", font.value)}><b>{font.sample}</b><span>{font.name}</span><small>{font.note}</small></button>)}</div></div><div className="choiceField colorChoice"><span>Color de acento del portafolio</span><div>{colors.map((color) => <button key={color} aria-label={`Elegir ${color}`} className={data.accent === color ? "selected" : ""} style={{ background: color }} onClick={() => update("accent", color)} />)}<label><input aria-label="Color personalizado" type="color" value={data.accent} onChange={(e) => update("accent", e.target.value)} />＋</label></div></div></div>}
         {step === 2 && <div className="formPanel"><div className="schemaSummary"><span>✦</span><p><strong>{schema.id.replace("gallery", "Gallery").replace("studio", "Studio Luv").replace("scrapbook", "Scrapbook").replace("art", "Art Director").replace("blue", "Blue OS").replace("whimsy", "Whimsy").replace("sage", "Sage Journal").replace("muse", "Muse Editorial").replace("creator", "Creator Studio").replace("aura", "Aura Grid").replace("noir", "Noir Atelier").replace("sorbet", "Sorbet Studio").replace("lavender", "Lavender Cloud").replace("mint", "Mint Picnic").replace("electric", "Electric Pulse").replace("pop", "Sunny Pop").replace("retro", "Retro Zine").replace("chic", "Éditorial Chic").replace("bold", "Neo Brutal")}</strong><small>{schema.label}. El formulario respeta su composición.</small></p></div><Field label="Título de campañas" value={data.campaignTitle} set={(v) => update("campaignTitle", v)} placeholder="Piezas UGC para campañas" /><Choice title="Categorías visibles en el portafolio" options={categories} selected={data.portfolioCategories} toggle={(v) => toggle("portfolioCategories", v)} /><Choice title="Sectores con los que trabajas" options={clientOptions} selected={data.clientTypes} toggle={(v) => toggle("clientTypes", v)} /><div className="categoryTabs" role="tablist">{data.portfolioCategories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}<small>{workMedia.filter((m) => m.category === item).length}/{item === "Fotografía" ? schema.photoLimit : schema.categoryLimit}</small></button>)}</div>{data.portfolioCategories.length ? <label className="mediaDrop"><input type="file" accept="video/*,image/*" multiple onChange={upload} /><span>↑</span><strong>Agregar piezas a “{data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}”</strong><small>Imágenes hasta 10 MB · videos hasta 50 MB · {schema.label}.</small><b>Seleccionar archivos</b></label> : <div className="emptyCategory">Selecciona al menos una categoría para agregar contenido.</div>}{workMedia.length > 0 && <div className="mediaList">{workMedia.map((item) => <article key={item.id} className="mediaRow"><div className="mediaThumb">{item.previewUrl ? <img src={item.previewUrl} alt="Vista previa del contenido" /> : item.type === "video" ? <video src={item.url} muted /> : <img src={item.url} alt="Contenido subido" />}</div><div className="mediaInfo"><strong>{item.name}</strong><small>{item.category} · {item.type === "video" ? "Video" : "Foto"}</small>{item.type === "video" && <><button className={`frameChoice ${item.framed ? "selected" : ""}`} onClick={() => updateMedia(item.id, "framed", !item.framed)}>{item.framed ? "✓ Con marco de teléfono" : "Sin marco de teléfono"}</button><div className="mediaLinks"><input value={item.instagram} onChange={(e) => updateMedia(item.id, "instagram", e.target.value)} placeholder="Link de Instagram" /><input value={item.tiktok} onChange={(e) => updateMedia(item.id, "tiktok", e.target.value)} placeholder="Link de TikTok" /></div></>}</div><button className="removeMedia" onClick={() => remove(item.id)} aria-label="Eliminar">×</button></article>)}</div>}<div className="brandUpload"><div><strong>Logos de marcas</strong><small>JPG, PNG, WebP o GIF · máximo 10 MB por logo.</small></div><label><input type="file" accept="image/*" multiple onChange={uploadBrands} />＋ Agregar logos</label></div>{brands.length > 0 && <div className="brandList">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={brand.name} /><span>{brand.name}</span><button onClick={() => removeBrand(brand.id)} aria-label={`Eliminar ${brand.name}`}>×</button></article>)}</div>}</div>}
         {step === 3 && <div className="formPanel"><div className={`syncCard ${data.metricSync ? "connected" : ""}`}><div><span>{data.metricSync ? "✓" : "↻"}</span><div><strong>{data.metricSync ? "Métricas conectadas" : "Conecta tus métricas"}</strong><small>{data.metricSync ? "Instagram y TikTok · actualización automática activa" : "Mantén seguidores y alcance al día sin editar tu diseño."}</small></div></div><button onClick={syncMetrics} disabled={syncing || data.metricSync}>{syncing ? "Conectando…" : data.metricSync ? "Conectado" : "Conectar redes"}</button></div><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} /><div className="metricPreview"><span><b>{data.womenAudience}</b><small>Mujeres</small></span><div><strong>{data.followers}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews}</strong><small>vistas mensuales</small></div></div></div>}
@@ -974,6 +1018,13 @@ function socialLink(network: "instagram" | "tiktok", value: string) {
 }
 
 export function WebsitePortfolio({ data, media, brands, schema, expanded = false }: { data: Portfolio; media: Media[]; brands: BrandAsset[]; schema: TemplateSchema; expanded?: boolean }) {
+  const experienceProps = { data, media, brands, schema, expanded };
+  if (data.webTemplate === "feed") return <CreatorFeedPortfolio {...experienceProps} />;
+  if (data.webTemplate === "stories") return <CampaignStoriesPortfolio {...experienceProps} />;
+  if (data.webTemplate === "personal") return <PersonalScrapbookPortfolio {...experienceProps} />;
+  if (data.webTemplate === "showreel") return <ShowreelFirstPortfolio {...experienceProps} />;
+  if (data.webTemplate === "talent") return <TalentProfilePortfolio {...experienceProps} />;
+  if (data.webTemplate === "postcard") return <PostcardJournalPortfolio {...experienceProps} />;
   const work = media.filter((item) => data.portfolioCategories.includes(item.category));
   const groups = data.portfolioCategories.map((category) => ({ category, items: work.filter((item) => item.category === category).slice(0, category === "Fotografía" ? schema.photoLimit : schema.categoryLimit) })).filter((group) => group.items.length);
   const countries = data.topCountries.split("·").map((item) => item.trim()).filter(Boolean);
