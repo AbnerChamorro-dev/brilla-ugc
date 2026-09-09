@@ -55,21 +55,23 @@ test("offers six narrative UGC portfolio experiences wired to the editor", async
   assert.match(additions, /\.postcardJournal/);
 });
 
-test("keeps the live portfolio preview visible while editing on mobile", async () => {
+test("turns the mobile editor into an app-like wizard with a preview sheet", async () => {
   const [editor, styles] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/crear/crear.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(styles, /@media\(max-width:680px\)[\s\S]*\.livePreview\{[^}]*display:block/);
-  assert.match(styles, /\.livePreview\{[^}]*position:sticky/);
+  assert.match(styles, /@media\(max-width:680px\)[\s\S]*\.livePreview\{[^}]*position:fixed/);
   assert.match(styles, /\.livePreview>\.websitePortfolio\.compact/);
   assert.match(styles, /\.livePreview>\.portfolioExperiencePage\.compact/);
   assert.match(editor, /mobilePreviewOpen/);
+  assert.match(editor, /mobilePreviewLauncher/);
+  assert.match(editor, /mobilePreviewBackdrop/);
   assert.match(editor, /mobilePreviewToggle/);
-  assert.match(editor, /Ocultar/);
-  assert.match(editor, /Mostrar/);
-  assert.match(styles, /\.livePreview\.mobilePreviewCollapsed/);
+  assert.match(editor, /Pantalla completa/);
+  assert.match(styles, /\.livePreview\.mobilePreviewOpen/);
+  assert.match(styles, /\.builderActions\{position:sticky/);
+  assert.match(styles, /scroll-snap-type:x mandatory/);
 });
 
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
