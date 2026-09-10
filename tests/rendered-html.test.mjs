@@ -72,6 +72,38 @@ test("turns the mobile editor into an app-like wizard with a preview sheet", asy
   assert.match(styles, /\.livePreview\.mobilePreviewOpen/);
   assert.match(styles, /\.builderActions\{position:sticky/);
   assert.match(styles, /scroll-snap-type:x mandatory/);
+  assert.match(editor, /mobileStepNav/);
+  assert.match(editor, /maxVisitedStep/);
+  assert.match(styles, /\.mobileStepNav button\.visited/);
+});
+
+test("starts the generation form empty and uses examples only as placeholders", async () => {
+  const editor = await readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8");
+
+  assert.match(editor, /name: "", title: "", bio: ""/);
+  assert.match(editor, /niches: \[\], format: "", webTemplate: "", template: "", fontStyle: "", accent: "", portfolioCategories: \[\]/);
+  assert.match(editor, /followers: "", monthlyViews: "", womenAudience: "", topCountries: ""/);
+  assert.doesNotMatch(editor, /Sofía Mendoza|sofia\.crea|sofiaugc|sofia-mendoza/i);
+  assert.doesNotMatch(editor, /Conectar redes|Conecta tus métricas/i);
+  assert.match(editor, /placeholder="tu-nombre"/);
+  assert.match(editor, /placeholder="Ej\. 50\.5 mil"/);
+});
+
+test("uses resumable uploads for large mobile media and accepts iPhone images", async () => {
+  const [editor, migration, manifest] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260910215514_support_mobile_media_mime_types.sql", import.meta.url), "utf8"),
+    readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /new Upload\(blob/);
+  assert.match(editor, /resumableUploadThreshold = 6 \* 1024 \* 1024/);
+  assert.match(editor, /retryDelays: \[0, 3000, 5000, 10000, 20000\]/);
+  assert.match(editor, /image\/heic/);
+  assert.match(editor, /image\/heif/);
+  assert.match(migration, /'image\/heic'/);
+  assert.match(migration, /'image\/heif'/);
+  assert.match(manifest, /"tus-js-client": "4\.3\.1"/);
 });
 
 test("keeps Google auth and durable portfolio storage wired safely", async () => {

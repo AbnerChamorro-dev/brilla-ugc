@@ -7,6 +7,7 @@
 
 import { ChangeEvent, CSSProperties, PointerEvent, UIEvent, WheelEvent, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { Upload } from "tus-js-client";
 import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
 import { LegalConsentGate } from "../components/legal-consent-gate";
 import { rememberAuthRedirect } from "../lib/auth-redirect";
@@ -35,7 +36,7 @@ import "./portfolio-additions.css";
 
 export type CaseStudy = { client: string; brief: string; hook: string; result: string; testimonial: string };
 export type Portfolio = {
-  name: string; title: string; bio: string; location: string; niches: string[]; format: "website" | "presentation"; webTemplate: string; template: string; fontStyle: string; accent: string; portfolioCategories: string[];
+  name: string; title: string; bio: string; location: string; niches: string[]; format: "" | "website" | "presentation"; webTemplate: string; template: string; fontStyle: string; accent: string; portfolioCategories: string[];
   creativeDiary: string; languages: string; caseStudies: Record<string, CaseStudy>;
   campaignTitle: string; contentTypes: string[]; clientTypes: string[]; services: string[]; includes: string[];
   followers: string; monthlyViews: string; womenAudience: string; topCountries: string;
@@ -51,15 +52,16 @@ type RemoteAsset = { asset_id: number; kind: "media" | "brand"; storage_path: st
 
 const assetDbName = "brilla-assets-v1";
 const assetStoreName = "assets";
-const draftStorageKey = "brilla-portfolio-draft-v2";
+const draftStorageKey = "brilla-portfolio-draft-v3";
 const pendingStepStorageKey = "brilla-post-auth-step-v1";
 const draftUploadPendingKey = "brilla-pending-cloud-upload-v1";
 const creatorMediaBucket = "creator-media";
-const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const imageMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"]);
 const videoMimeTypes = new Set(["video/mp4", "video/webm", "video/quicktime"]);
 const maxImageBytes = 10 * 1024 * 1024;
 const maxVideoBytes = 50 * 1024 * 1024;
 const signedAssetLifetimeSeconds = 24 * 60 * 60;
+const resumableUploadThreshold = 6 * 1024 * 1024;
 const reservedPortfolioSlugs = new Set(["crear", "cuenta", "api", "auth", "login", "admin"]);
 
 type CloudSaveState = "local" | "loading" | "saved" | "error";
@@ -90,8 +92,8 @@ async function updateStoredAsset(kind: "media" | "brand", id: number, changes: P
 function validateAssetFile(file: Pick<File, "name" | "type" | "size">, kind: "media" | "brand") {
   const image = imageMimeTypes.has(file.type);
   const video = videoMimeTypes.has(file.type);
-  if (kind === "brand" && !image) return "Los logos deben ser JPG, PNG, WebP o GIF.";
-  if (kind === "media" && !image && !video) return "Usa imágenes JPG, PNG, WebP o GIF, o videos MP4, WebM o MOV.";
+  if (kind === "brand" && !image) return "Los logos deben ser JPG, PNG, WebP, GIF, HEIC o HEIF.";
+  if (kind === "media" && !image && !video) return "Usa imágenes JPG, PNG, WebP, GIF, HEIC o HEIF, o videos MP4, WebM o MOV.";
   const limit = video ? maxVideoBytes : maxImageBytes;
   if (file.size > limit) return `${file.name} supera el límite de ${video ? "50 MB" : "10 MB"}.`;
   return "";
@@ -153,6 +155,46 @@ async function optimizeUploadFile(file: File) {
   }
 }
 
+function resumableStorageEndpoint() {
+  const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!configuredUrl) throw new Error("La conexión de archivos de Brilla no está configurada.");
+  const url = new URL(configuredUrl);
+  const projectMatch = url.hostname.match(/^([a-z0-9-]+)\.supabase\.co$/i);
+  const origin = projectMatch ? `${url.protocol}//${projectMatch[1]}.storage.supabase.co` : url.origin;
+  return `${origin}/storage/v1/upload/resumable`;
+}
+
+async function uploadAssetBlob(path: string, blob: Blob, contentType: string, cacheControl: string) {
+  const supabase = getSupabaseBrowserClient();
+  if (blob.size <= resumableUploadThreshold) {
+    const { error } = await supabase.storage.from(creatorMediaBucket).upload(path, blob, { upsert: true, contentType, cacheControl });
+    if (error) throw error;
+    return;
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (sessionError || !accessToken) throw sessionError ?? new Error("La sesión expiró antes de subir el archivo.");
+
+  await new Promise<void>((resolve, reject) => {
+    const upload = new Upload(blob, {
+      endpoint: resumableStorageEndpoint(),
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      headers: { authorization: `Bearer ${accessToken}`, "x-upsert": "true" },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: resumableUploadThreshold,
+      metadata: { bucketName: creatorMediaBucket, objectName: path, contentType, cacheControl },
+      onError: reject,
+      onSuccess: () => resolve(),
+    });
+    void upload.findPreviousUploads().then((previousUploads) => {
+      if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+      upload.start();
+    }).catch(reject);
+  });
+}
+
 async function createAssetPreview(blob: Blob, type: "video" | "image") {
   try { return type === "video" ? await videoPreviewBlob(blob) : await resizeImageBlob(blob, 640, .76); }
   catch { return undefined; }
@@ -168,19 +210,11 @@ async function uploadStoredAsset(userId: string, asset: StoredAsset, sortOrder: 
   const supabase = getSupabaseBrowserClient();
   const path = `${userId}/${asset.kind}/${asset.id}-${safeStorageName(asset.name)}`;
   const previewPath = asset.previewBlob ? `${userId}/previews/${asset.kind}-${asset.id}.webp` : undefined;
-  const { error: storageError } = await supabase.storage.from(creatorMediaBucket).upload(path, asset.blob, {
-    upsert: true,
-    contentType: asset.blob.type,
-    cacheControl: "3600",
-  });
-  if (storageError) throw storageError;
+  await uploadAssetBlob(path, asset.blob, asset.blob.type, "3600");
   if (previewPath && asset.previewBlob) {
-    const { error: previewError } = await supabase.storage.from(creatorMediaBucket).upload(previewPath, asset.previewBlob, {
-      upsert: true,
-      contentType: "image/webp",
-      cacheControl: "86400",
-    });
-    if (previewError) {
+    try {
+      await uploadAssetBlob(previewPath, asset.previewBlob, "image/webp", "86400");
+    } catch (previewError) {
       if (path !== previousPath) await supabase.storage.from(creatorMediaBucket).remove([path]);
       throw previewError;
     }
@@ -291,17 +325,13 @@ export const templateSchemas: Record<string, TemplateSchema> = {
   postcard: { id: "postcard", format: "website", categoryLimit: 5, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 fotos y 5 videos por categoría" },
 };
 const initial: Portfolio = {
-  name: "Sofía Mendoza", title: "Creadora de Contenido UGC | Beauty, Lifestyle & Travel.",
-  bio: "Creo contenido auténtico, cercano y estratégico que muestra procesos y resultados reales para generar confianza y conexión con la audiencia.",
-  creativeDiary: "Me gusta comenzar cada idea observando cómo una persona usaría el producto en su vida real. Después convierto ese momento cotidiano en una historia sencilla, visual y fácil de recordar.", languages: "Español", caseStudies: {},
-  location: "Bogotá, Colombia", niches: ["Beauty", "Lifestyle", "Travel"], format: "website", webTemplate: "pop", template: "gallery", fontStyle: "modern", accent: "#c15f7a", portfolioCategories: categories,
-  campaignTitle: "Piezas UGC para campañas publicitarias", contentTypes: ["Unboxings", "Vlogs", "Testimonios", "Tutoriales"],
-  clientTypes: ["Belleza", "Skincare", "Hogar", "Hoteles", "Productos"], services: ["Video UGC", "Fotografía UGC", "Reel colaborativo", "Historias"],
-  includes: ["Concepto creativo", "Guion estratégico", "Grabación", "Edición", "Formato vertical"],
-  followers: "50.5 mil", monthlyViews: "700.2 K", womenAudience: "82.9%", topCountries: "Colombia 79.2% · Estados Unidos 3.3% · México 3% · España 2.5%",
-  videoRate: "$350.000 COP", collabRate: "$400.000 COP", storyRate: "$80.000 COP", storyPackRate: "$210.000 COP", usageRate: "$80.000 COP / mes",
-  email: "hola@sofiaugc.com", whatsapp: "+57 314 722 5878", instagram: "@sofia.crea", tiktok: "@sofia.crea", availability: "Disponible para campañas y colaboraciones",
-  notifyViews: false, metricSync: false, portfolioSlug: "sofia-mendoza",
+  name: "", title: "", bio: "", creativeDiary: "", languages: "", caseStudies: {},
+  location: "", niches: [], format: "", webTemplate: "", template: "", fontStyle: "", accent: "", portfolioCategories: [],
+  campaignTitle: "", contentTypes: [], clientTypes: [], services: [], includes: [],
+  followers: "", monthlyViews: "", womenAudience: "", topCountries: "",
+  videoRate: "", collabRate: "", storyRate: "", storyPackRate: "", usageRate: "",
+  email: "", whatsapp: "", instagram: "", tiktok: "", availability: "",
+  notifyViews: false, metricSync: false, portfolioSlug: "",
 };
 
 function restorePortfolio(value: unknown): Portfolio {
@@ -322,6 +352,7 @@ export default function CreatePortfolio() {
 
 function PortfolioEditor() {
   const [step, setStep] = useState(0);
+  const [maxVisitedStep, setMaxVisitedStep] = useState(0);
   const [data, setData] = useState<Portfolio>(initial);
   const [media, setMedia] = useState<Media[]>([]);
   const [brands, setBrands] = useState<BrandAsset[]>([]);
@@ -335,7 +366,6 @@ function PortfolioEditor() {
   const [slugState, setSlugState] = useState<SlugState>("idle");
   const [copied, setCopied] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [views, setViews] = useState(0);
   const [notificationPreferenceExists, setNotificationPreferenceExists] = useState(false);
   const [notificationBusy, setNotificationBusy] = useState(false);
@@ -436,7 +466,7 @@ function PortfolioEditor() {
       setLegalConsentRequired(false);
       setLegalError("");
       const pendingStep = Number(window.localStorage.getItem(pendingStepStorageKey));
-      if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) setStep(pendingStep);
+      if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) { setStep(pendingStep); setMaxVisitedStep((current) => Math.max(current, pendingStep)); }
       window.localStorage.removeItem(pendingStepStorageKey);
       setAuthPromptOpen(false);
     };
@@ -838,7 +868,6 @@ function PortfolioEditor() {
       setPdfBusy(false);
     }
   };
-  const syncMetrics = () => { setSyncing(true); window.setTimeout(() => { setData((current) => ({ ...current, metricSync: true })); setSyncing(false); }, 900); };
   const saveViewNotifications = async (value: boolean) => {
     setData((current) => ({ ...current, notifyViews: value }));
     if (!user) return;
@@ -916,7 +945,7 @@ function PortfolioEditor() {
     setPublishBusy(false);
   };
   const requestStep = (nextStep: number) => {
-    if (nextStep <= 1 || (user && legalReady)) { setStep(nextStep); return; }
+    if (nextStep <= 1 || (user && legalReady)) { setStep(nextStep); setMaxVisitedStep((current) => Math.max(current, nextStep)); return; }
     if (user && !legalReady) { setLegalConsentRequired(true); return; }
     if (step < 1) { setStep(1); return; }
     window.localStorage.setItem(draftStorageKey, JSON.stringify(data));
@@ -959,7 +988,7 @@ function PortfolioEditor() {
       setLegalConsentRequired(false);
       setAuthenticatedConsentChecked(false);
       const pendingStep = Number(window.localStorage.getItem(pendingStepStorageKey));
-      if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) setStep(pendingStep);
+      if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) { setStep(pendingStep); setMaxVisitedStep((current) => Math.max(current, pendingStep)); }
       window.localStorage.removeItem(pendingStepStorageKey);
     }
     setLegalBusy(false);
@@ -1000,17 +1029,18 @@ function PortfolioEditor() {
       <aside className="builderSidebar"><p>TU PORTAFOLIO</p><nav aria-label="Secciones del editor">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => requestStep(index)}><span>{index < step ? "✓" : String(index + 1).padStart(2, "0")}</span><div><small>PASO {String(index + 1).padStart(2, "0")}</small><strong>{item[0]}</strong></div></button>)}</nav><div className="sidebarTip"><b>✦</b><p><strong>Todo incluido</strong>Web, video, métricas, alertas y PDF. Siempre gratis.</p></div></aside>
       <section className="builderFormArea">
         <div className="mobileProgress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
+        <nav className="mobileStepNav" aria-label="Pasos visitados">{steps.map((item, index) => <button key={item[0]} type="button" className={index === step ? "current" : index < maxVisitedStep ? "visited" : ""} disabled={index > maxVisitedStep} onClick={() => requestStep(index)}><span>{index < maxVisitedStep ? "✓" : index + 1}</span>{item[0]}</button>)}</nav>
         <div className="formHeading"><span>{String(step + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
         {assetError && <div className="assetSyncNotice" role="alert"><span>!</span><p>{assetError}</p><button type="button" onClick={() => setAssetError("")} aria-label="Cerrar aviso">×</button></div>}
         {step === 2 && data.format === "website" && data.webTemplate === "stories" && data.portfolioCategories.length > 0 && <div className="formPanel"><div className="schemaSummary"><span>✎</span><p><strong>Historia del caso · {data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}</strong><small>Convierte esta categoría en un caso de campaña. Puedes dejar vacío lo que aún no tengas.</small></p></div><Field label="Marca o cliente" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { client: "" }).client} set={(v) => updateCaseStudy("client", v)} placeholder="Nombre de la marca" /><TextArea label="Brief de la marca" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { brief: "" }).brief} set={(v) => updateCaseStudy("brief", v)} /><Field label="Hook de apertura" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { hook: "" }).hook} set={(v) => updateCaseStudy("hook", v)} placeholder="La primera frase del video" /><TextArea label="Resultado" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { result: "" }).result} set={(v) => updateCaseStudy("result", v)} /><TextArea label="Testimonio" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { testimonial: "" }).testimonial} set={(v) => updateCaseStudy("testimonial", v)} /></div>}
         {step === 1 && <div className="formPanel"><AssetSlot title="Retrato principal" text="Aparece en la portada de todas las plantillas." media={portrait} accept="image/*,video/*" onChange={(event) => uploadSpecial("__portrait", event)} onRemove={() => portrait && remove(portrait.id)} /><Field label="Nombre público" value={data.name} set={(v) => update("name", v)} placeholder="Tu nombre" /><Field label="Título profesional" value={data.title} set={(v) => update("title", v)} placeholder="Creadora UGC | Beauty & Lifestyle" /><TextArea label="Sobre ti" value={data.bio} set={(v) => update("bio", v)} />{data.format === "website" && ["personal", "postcard"].includes(data.webTemplate) && <TextArea label="Así creo contenido · entrada de diario" value={data.creativeDiary} set={(v) => update("creativeDiary", v)} />}{data.format === "website" && data.webTemplate === "talent" && <Field label="Idiomas" value={data.languages} set={(v) => update("languages", v)} placeholder="Español · Inglés" />}<Field label="Ubicación" value={data.location} set={(v) => update("location", v)} placeholder="Ciudad, País" /><Choice title="Nichos principales" options={nicheOptions} selected={data.niches} toggle={(v) => toggle("niches", v)} /></div>}
-        {step === 0 && <div className="formPanel"><div className="choiceField templateFamily"><span>Plantillas de página web <small>{websiteOptions.length} estilos profesionales</small></span><p>Sitios verticales con navegación, secciones y transiciones suaves.</p><div className="themeCards webThemeCards">{websiteOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "website" ? data.webTemplate : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "website", webTemplate: mode, fontStyle }))} />)}</div></div><div className="templateDivider"><span>O ELIGE UNA EXPERIENCIA PRESENTACIONAL</span></div><div className="choiceField templateFamily"><span>Plantillas presentacionales <small>7 estilos</small></span><p>Láminas horizontales con navegación por gestos y flechas.</p><div className="themeCards">{templateOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "presentation" ? data.template : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "presentation", template: mode, fontStyle }))} />)}</div></div><div className="choiceField"><span>Tipo de letra</span><div className="fontCards">{fontOptions.map((font) => <button key={font.value} className={data.fontStyle === font.value ? "selected" : ""} onClick={() => update("fontStyle", font.value)}><b>{font.sample}</b><span>{font.name}</span><small>{font.note}</small></button>)}</div></div><div className="choiceField colorChoice"><span>Color de acento del portafolio</span><div>{colors.map((color) => <button key={color} aria-label={`Elegir ${color}`} className={data.accent === color ? "selected" : ""} style={{ background: color }} onClick={() => update("accent", color)} />)}<label><input aria-label="Color personalizado" type="color" value={data.accent} onChange={(e) => update("accent", e.target.value)} />＋</label></div></div></div>}
+        {step === 0 && <div className="formPanel"><div className="choiceField templateFamily"><span>Plantillas de página web <small>{websiteOptions.length} estilos profesionales</small></span><p>Sitios verticales con navegación, secciones y transiciones suaves.</p><div className="themeCards webThemeCards">{websiteOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "website" ? data.webTemplate : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "website", webTemplate: mode, fontStyle }))} />)}</div></div><div className="templateDivider"><span>O ELIGE UNA EXPERIENCIA PRESENTACIONAL</span></div><div className="choiceField templateFamily"><span>Plantillas presentacionales <small>7 estilos</small></span><p>Láminas horizontales con navegación por gestos y flechas.</p><div className="themeCards">{templateOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "presentation" ? data.template : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "presentation", template: mode, fontStyle }))} />)}</div></div><div className="choiceField"><span>Tipo de letra</span><div className="fontCards">{fontOptions.map((font) => <button key={font.value} className={data.fontStyle === font.value ? "selected" : ""} onClick={() => update("fontStyle", font.value)}><b>{font.sample}</b><span>{font.name}</span><small>{font.note}</small></button>)}</div></div><div className="choiceField colorChoice"><span>Color de acento del portafolio</span><div>{colors.map((color) => <button key={color} aria-label={`Elegir ${color}`} className={data.accent === color ? "selected" : ""} style={{ background: color }} onClick={() => update("accent", color)} />)}<label><input aria-label="Color personalizado" type="color" value={data.accent || "#6d4dff"} onChange={(e) => update("accent", e.target.value)} />＋</label></div></div></div>}
         {step === 2 && <div className="formPanel"><div className="schemaSummary"><span>✦</span><p><strong>{schema.id.replace("gallery", "Gallery").replace("studio", "Studio Luv").replace("scrapbook", "Scrapbook").replace("art", "Art Director").replace("blue", "Blue OS").replace("whimsy", "Whimsy").replace("sage", "Sage Journal").replace("muse", "Muse Editorial").replace("creator", "Creator Studio").replace("aura", "Aura Grid").replace("noir", "Noir Atelier").replace("sorbet", "Sorbet Studio").replace("lavender", "Lavender Cloud").replace("mint", "Mint Picnic").replace("electric", "Electric Pulse").replace("pop", "Sunny Pop").replace("retro", "Retro Zine").replace("chic", "Éditorial Chic").replace("bold", "Neo Brutal")}</strong><small>{schema.label}. El formulario respeta su composición.</small></p></div><Field label="Título de campañas" value={data.campaignTitle} set={(v) => update("campaignTitle", v)} placeholder="Piezas UGC para campañas" /><Choice title="Categorías visibles en el portafolio" options={categories} selected={data.portfolioCategories} toggle={(v) => toggle("portfolioCategories", v)} /><Choice title="Sectores con los que trabajas" options={clientOptions} selected={data.clientTypes} toggle={(v) => toggle("clientTypes", v)} /><div className="categoryTabs" role="tablist">{data.portfolioCategories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}<small>{workMedia.filter((m) => m.category === item).length}/{item === "Fotografía" ? schema.photoLimit : schema.categoryLimit}</small></button>)}</div>{data.portfolioCategories.length ? <label className="mediaDrop"><input type="file" accept="video/*,image/*" multiple onChange={upload} /><span>↑</span><strong>Agregar piezas a “{data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}”</strong><small>Imágenes hasta 10 MB · videos hasta 50 MB · {schema.label}.</small><b>Seleccionar archivos</b></label> : <div className="emptyCategory">Selecciona al menos una categoría para agregar contenido.</div>}{workMedia.length > 0 && <div className="mediaList">{workMedia.map((item) => <article key={item.id} className="mediaRow"><div className="mediaThumb">{item.previewUrl ? <img src={item.previewUrl} alt="Vista previa del contenido" /> : item.type === "video" ? <video src={item.url} muted /> : <img src={item.url} alt="Contenido subido" />}</div><div className="mediaInfo"><strong>{item.name}</strong><small>{item.category} · {item.type === "video" ? "Video" : "Foto"}</small>{item.type === "video" && <><button className={`frameChoice ${item.framed ? "selected" : ""}`} onClick={() => updateMedia(item.id, "framed", !item.framed)}>{item.framed ? "✓ Con marco de teléfono" : "Sin marco de teléfono"}</button><div className="mediaLinks"><input value={item.instagram} onChange={(e) => updateMedia(item.id, "instagram", e.target.value)} placeholder="Link de Instagram" /><input value={item.tiktok} onChange={(e) => updateMedia(item.id, "tiktok", e.target.value)} placeholder="Link de TikTok" /></div></>}</div><button className="removeMedia" onClick={() => remove(item.id)} aria-label="Eliminar">×</button></article>)}</div>}<div className="brandUpload"><div><strong>Logos de marcas</strong><small>JPG, PNG, WebP o GIF · máximo 10 MB por logo.</small></div><label><input type="file" accept="image/*" multiple onChange={uploadBrands} />＋ Agregar logos</label></div>{brands.length > 0 && <div className="brandList">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={brand.name} /><span>{brand.name}</span><button onClick={() => removeBrand(brand.id)} aria-label={`Eliminar ${brand.name}`}>×</button></article>)}</div>}</div>}
-        {step === 3 && <div className="formPanel"><div className={`syncCard ${data.metricSync ? "connected" : ""}`}><div><span>{data.metricSync ? "✓" : "↻"}</span><div><strong>{data.metricSync ? "Métricas conectadas" : "Conecta tus métricas"}</strong><small>{data.metricSync ? "Instagram y TikTok · actualización automática activa" : "Mantén seguidores y alcance al día sin editar tu diseño."}</small></div></div><button onClick={syncMetrics} disabled={syncing || data.metricSync}>{syncing ? "Conectando…" : data.metricSync ? "Conectado" : "Conectar redes"}</button></div><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} /><div className="metricPreview"><span><b>{data.womenAudience}</b><small>Mujeres</small></span><div><strong>{data.followers}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews}</strong><small>vistas mensuales</small></div></div></div>}
+        {step === 3 && <div className="formPanel"><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="Ej. 50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="Ej. 700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="Ej. 82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} placeholder="Ej. Colombia 79% · México 12% · España 9%" /><div className="metricPreview"><span><b>{data.womenAudience || "—"}</b><small>Mujeres</small></span><div><strong>{data.followers || "—"}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews || "—"}</strong><small>vistas mensuales</small></div></div></div>}
         {step === 4 && <div className="formPanel"><Choice title="Cada video UGC incluye" options={includeOptions} selected={data.includes} toggle={(v) => toggle("includes", v)} services /><div className="twoFields"><Field label="Video UGC" value={data.videoRate} set={(v) => update("videoRate", v)} placeholder="$350.000 COP" /><Field label="Reel en colaboración" value={data.collabRate} set={(v) => update("collabRate", v)} placeholder="$400.000 COP" /><Field label="1 historia con CTA" value={data.storyRate} set={(v) => update("storyRate", v)} placeholder="$80.000 COP" /><Field label="Pack 3 historias" value={data.storyPackRate} set={(v) => update("storyPackRate", v)} placeholder="$210.000 COP" /></div><Field label="Derechos de pauta por mes" value={data.usageRate} set={(v) => update("usageRate", v)} placeholder="$80.000 COP / mes" /></div>}
         {step === 5 && <div className="formPanel">{schema.contactVisual && <AssetSlot title="Visual de cierre" text="Aparece en la última lámina de esta plantilla." media={contactVisual} accept="image/*,video/*" onChange={(event) => uploadSpecial("__contact", event)} onRemove={() => contactVisual && remove(contactVisual.id)} />}<Choice title="Tipos de contenido" options={contentOptions} selected={data.contentTypes} toggle={(v) => toggle("contentTypes", v)} services /><div className="twoFields"><Field label="Correo" type="email" value={data.email} set={(v) => update("email", v)} placeholder="hola@tucorreo.com" /><Field label="WhatsApp" value={data.whatsapp} set={(v) => update("whatsapp", v)} placeholder="+57 300 000 0000" /><Field label="Instagram" value={data.instagram} set={(v) => update("instagram", v)} placeholder="@tuusuario" /><Field label="TikTok" value={data.tiktok} set={(v) => update("tiktok", v)} placeholder="@tuusuario" /></div><Field label="Disponibilidad" value={data.availability} set={(v) => update("availability", v)} placeholder="Disponible para campañas" /><Choice title="Servicios ofrecidos" options={serviceOptions} selected={data.services} toggle={(v) => toggle("services", v)} services /><div className="readyCard"><span>✦</span><div><strong>Tu presentación está lista</strong><p>Usa la rueda del mouse, el trackpad, las flechas o desliza para recorrerla.</p></div></div></div>}
-        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => void saveViewNotifications(value)} title="Resumen de actividad" text={notificationBusy ? "Guardando tu preferencia…" : "Recibe un resumen semanal cuando haya actividad nueva. Puedes cambiar la frecuencia en tu cuenta."} /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización real" : "visualizaciones reales"}</strong><small>El panel de tu cuenta muestra visitantes aproximados y clics por canal.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span>↗</span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => void downloadPdf()} disabled={pdfBusy}><span>↓</span><strong>{pdfBusy ? "Creando PDF…" : "Media kit PDF"}</strong><small>Descarga un archivo listo para compartir</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : "Publícalo cuando quieras. Tu borrador permanece guardado."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking"}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
-        <div className="builderActions"><button className="backButton" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => requestStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton" onClick={() => openPortfolio()}>Ver portafolio <span>↗</span></button>}</div>
+        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} placeholder="tu-nombre" onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => void saveViewNotifications(value)} title="Resumen de actividad" text={notificationBusy ? "Guardando tu preferencia…" : "Recibe un resumen semanal cuando haya actividad nueva. Puedes cambiar la frecuencia en tu cuenta."} /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización real" : "visualizaciones reales"}</strong><small>El panel de tu cuenta muestra visitantes aproximados y clics por canal.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span>↗</span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => void downloadPdf()} disabled={pdfBusy}><span>↓</span><strong>{pdfBusy ? "Creando PDF…" : "Media kit PDF"}</strong><small>Descarga un archivo listo para compartir</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : "Publícalo cuando quieras. Tu borrador permanece guardado."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking"}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
+        <div className="builderActions"><button className="backButton" onClick={() => requestStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => requestStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton" onClick={() => openPortfolio()}>Ver portafolio <span>↗</span></button>}</div>
       </section>
       {mobilePreviewOpen && <button className="mobilePreviewBackdrop isOpen" type="button" aria-label="Cerrar vista previa" onClick={() => setMobilePreviewOpen(false)} />}
       <aside className={`livePreview ${mobilePreviewOpen ? "mobilePreviewOpen" : ""}`} aria-label="Vista previa del portafolio"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>{data.format === "website" ? "Página web · cambios en vivo" : "Presentación horizontal · cambios en vivo"}</strong></div><small>{data.format === "website" ? "Scroll ↓" : "Desliza →"}</small><div className="mobilePreviewControls"><button className="mobilePreviewFullscreen" type="button" onClick={() => openPortfolio()}>Pantalla completa ↗</button><button className="mobilePreviewToggle" type="button" aria-label="Cerrar vista previa" onClick={() => setMobilePreviewOpen(false)}>×</button></div></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} />}</aside>
@@ -1020,7 +1050,7 @@ function PortfolioEditor() {
 }
 
 function Field({ label, value, set, placeholder, type = "text" }: { label: string; value: string; set: (v: string) => void; placeholder: string; type?: string }) { return <label className="builderField"><span>{label}</span><input type={type} value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} /></label>; }
-function TextArea({ label, value, set }: { label: string; value: string; set: (v: string) => void }) { return <label className="builderField"><span>{label}</span><textarea value={value} onChange={(e) => set(e.target.value)} /></label>; }
+function TextArea({ label, value, set, placeholder = "Escribe aquí…" }: { label: string; value: string; set: (v: string) => void; placeholder?: string }) { return <label className="builderField"><span>{label}</span><textarea value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} /></label>; }
 function AssetSlot({ title, text, media, accept, onChange, onRemove }: { title: string; text: string; media: Media | null; accept: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; onRemove: () => void }) { return <div className={`assetSlot ${media ? "filled" : ""}`}>{media && <div className="assetSlotPreview">{media.type === "video" ? <video src={media.url} poster={media.previewUrl} muted playsInline /> : <img src={media.url} alt={title} />}</div>}<div><strong>{media ? media.name : title}</strong><small>{media ? `${title} · listo` : text}</small></div><label><input type="file" accept={accept} onChange={onChange} />{media ? "Cambiar" : "Subir archivo"}</label>{media && <button onClick={onRemove} aria-label={`Eliminar ${title}`}>×</button>}</div>; }
 function ToggleRow({ checked, set, title, text }: { checked: boolean; set: (value: boolean) => void; title: string; text: string }) { return <label className="toggleRow"><div><strong>{title}</strong><small>{text}</small></div><input aria-label={title} type="checkbox" checked={checked} onChange={(event) => set(event.target.checked)} /><i aria-hidden="true" /></label>; }
 function Choice({ title, options, selected, toggle, services = false }: { title: string; options: string[]; selected: string[]; toggle: (v: string) => void; services?: boolean }) { return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i>{selected.includes(option) ? "✓" : "+"}</i>{option}</button>)}</div></div>; }
