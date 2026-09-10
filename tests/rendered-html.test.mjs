@@ -99,6 +99,9 @@ test("uses resumable uploads for large mobile media and accepts iPhone images", 
   assert.match(editor, /new Upload\(blob/);
   assert.match(editor, /resumableUploadThreshold = 6 \* 1024 \* 1024/);
   assert.match(editor, /retryDelays: \[0, 3000, 5000, 10000, 20000\]/);
+  assert.match(editor, /await uploadAssetBlobStandard\(path, blob, contentType, cacheControl\)/);
+  assert.match(editor, /retryAssetUploads/);
+  assert.match(editor, /"Reintentar"/);
   assert.match(editor, /image\/heic/);
   assert.match(editor, /image\/heif/);
   assert.match(migration, /'image\/heic'/);
@@ -300,7 +303,8 @@ test("keeps creator media private, validated, restorable, and removable", async 
   assert.match(editor, /poster=\{item\.previewUrl\}/);
   assert.match(editor, /preview_path:\s*previewPath/);
   assert.match(editor, /pendingLocal\s*=\s*localAssetsRef\.current\.filter/);
-  assert.match(editor, /No pudimos subir.*Permanece guardado en este dispositivo/);
+  assert.match(editor, /No pudimos subir.*readableAssetError/);
+  assert.match(editor, /se subió a Brilla, pero el navegador no pudo actualizar su copia local/);
 
   assert.match(migration, /create table if not exists public\.creator_media/i);
   assert.match(migration, /alter table public\.creator_media enable row level security/i);

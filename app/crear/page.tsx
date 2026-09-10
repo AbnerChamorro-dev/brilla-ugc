@@ -164,11 +164,29 @@ function resumableStorageEndpoint() {
   return `${origin}/storage/v1/upload/resumable`;
 }
 
+async function uploadAssetBlobStandard(path: string, blob: Blob, contentType: string, cacheControl: string) {
+  const { error } = await getSupabaseBrowserClient().storage.from(creatorMediaBucket).upload(path, blob, { upsert: true, contentType, cacheControl });
+  if (error) throw error;
+}
+
+function readableAssetError(error: unknown) {
+  const message = error instanceof Error
+    ? error.message
+    : error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : "";
+  const normalized = message.toLowerCase();
+  if (normalized.includes("row-level security") || normalized.includes("unauthorized") || normalized.includes("jwt")) return "Tu sesión perdió el permiso para subir archivos. Cierra sesión, vuelve a entrar y reintenta.";
+  if (normalized.includes("mime") || normalized.includes("content type")) return "Supabase rechazó el formato del archivo. Prueba convertirlo a JPG, PNG o MP4.";
+  if (normalized.includes("too large") || normalized.includes("maximum") || normalized.includes("payload")) return "El archivo supera el tamaño permitido: 10 MB para imágenes y 50 MB para videos.";
+  if (normalized.includes("network") || normalized.includes("fetch") || normalized.includes("load failed") || normalized.includes("timeout")) return "La conexión se interrumpió durante la subida. Mantén esta pantalla abierta y toca Reintentar.";
+  return "La subida fue rechazada por el servidor. Toca Reintentar; si continúa, vuelve a iniciar sesión.";
+}
+
 async function uploadAssetBlob(path: string, blob: Blob, contentType: string, cacheControl: string) {
   const supabase = getSupabaseBrowserClient();
   if (blob.size <= resumableUploadThreshold) {
-    const { error } = await supabase.storage.from(creatorMediaBucket).upload(path, blob, { upsert: true, contentType, cacheControl });
-    if (error) throw error;
+    await uploadAssetBlobStandard(path, blob, contentType, cacheControl);
     return;
   }
 
@@ -176,23 +194,29 @@ async function uploadAssetBlob(path: string, blob: Blob, contentType: string, ca
   const accessToken = sessionData.session?.access_token;
   if (sessionError || !accessToken) throw sessionError ?? new Error("La sesión expiró antes de subir el archivo.");
 
-  await new Promise<void>((resolve, reject) => {
-    const upload = new Upload(blob, {
-      endpoint: resumableStorageEndpoint(),
-      retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: { authorization: `Bearer ${accessToken}`, "x-upsert": "true" },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      chunkSize: resumableUploadThreshold,
-      metadata: { bucketName: creatorMediaBucket, objectName: path, contentType, cacheControl },
-      onError: reject,
-      onSuccess: () => resolve(),
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const upload = new Upload(blob, {
+        endpoint: resumableStorageEndpoint(),
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        headers: { authorization: `Bearer ${accessToken}`, "x-upsert": "true" },
+        uploadDataDuringCreation: true,
+        removeFingerprintOnSuccess: true,
+        chunkSize: resumableUploadThreshold,
+        metadata: { bucketName: creatorMediaBucket, objectName: path, contentType, cacheControl },
+        onError: reject,
+        onSuccess: () => resolve(),
+      });
+      void upload.findPreviousUploads().then((previousUploads) => {
+        if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
+        upload.start();
+      }).catch(reject);
     });
-    void upload.findPreviousUploads().then((previousUploads) => {
-      if (previousUploads.length) upload.resumeFromPreviousUpload(previousUploads[0]);
-      upload.start();
-    }).catch(reject);
-  });
+  } catch {
+    // Some mobile networks and embedded browsers block or interrupt TUS requests.
+    // Supabase also supports standard uploads at this size, so use it as a safe fallback.
+    await uploadAssetBlobStandard(path, blob, contentType, cacheControl);
+  }
 }
 
 async function createAssetPreview(blob: Blob, type: "video" | "image") {
@@ -388,6 +412,7 @@ function PortfolioEditor() {
   const [assetUploads, setAssetUploads] = useState(0);
   const [assetProcessing, setAssetProcessing] = useState(0);
   const [assetError, setAssetError] = useState("");
+  const [assetRetryNonce, setAssetRetryNonce] = useState(0);
   const dataRef = useRef(data);
   const localAssetsRef = useRef<StoredAsset[]>([]);
   const assetHydratedForRef = useRef("");
@@ -629,9 +654,13 @@ function PortfolioEditor() {
             const { path, previewPath } = await uploadStoredAsset(user.id, asset, index, asset.storagePath, asset.previewPath);
             asset.storagePath = path;
             asset.previewPath = previewPath;
-            await updateStoredAsset(asset.kind, asset.id, { storagePath: path, previewBlob: asset.previewBlob, previewPath });
-          } catch {
-            setAssetError(`No pudimos subir ${asset.name}. Permanece guardado en este dispositivo.`);
+            try {
+              await updateStoredAsset(asset.kind, asset.id, { storagePath: path, previewBlob: asset.previewBlob, previewPath });
+            } catch {
+              setAssetError(`${asset.name} se subió a Brilla, pero el navegador no pudo actualizar su copia local.`);
+            }
+          } catch (error) {
+            setAssetError(`No pudimos subir ${asset.name}. ${readableAssetError(error)}`);
           } finally {
             setAssetUploads((count) => Math.max(0, count - 1));
           }
@@ -701,7 +730,7 @@ function PortfolioEditor() {
       active = false;
       if (assetHydratedForRef.current === user.id) assetHydratedForRef.current = "";
     };
-  }, [user, cloudReady, localAssetsReady]);
+  }, [user, cloudReady, localAssetsReady, assetRetryNonce]);
 
   const update = (field: keyof Portfolio, value: string | string[]) => { setSaved(false); setData((current) => ({ ...current, [field]: value })); };
   const updateCaseStudy = (field: keyof CaseStudy, value: string) => {
@@ -721,7 +750,7 @@ function PortfolioEditor() {
   const toggle = (field: "niches" | "services" | "contentTypes" | "clientTypes" | "includes" | "portfolioCategories", value: string) => update(field, data[field].includes(value) ? data[field].filter((item) => item !== value) : [...data[field], value]);
   const rememberLocalAsset = (asset: StoredAsset) => {
     localAssetsRef.current = [...localAssetsRef.current.filter((item) => item.kind !== asset.kind || item.id !== asset.id), asset];
-    void storeAsset(asset).catch(() => setAssetError("Este navegador no pudo crear el respaldo local del archivo."));
+    void storeAsset(asset).catch(() => setAssetError("No pudimos crear una copia local del archivo. Si iniciaste sesión, intentaremos subirlo directamente a Brilla."));
   };
   const deleteRemoteAsset = async (kind: "media" | "brand", id: number, storagePath?: string, previewPath?: string) => {
     if (!user || !cloudReady) return;
@@ -748,14 +777,23 @@ function PortfolioEditor() {
       asset.storagePath = path;
       asset.previewPath = previewPath;
       localAssetsRef.current = localAssetsRef.current.map((item) => item.kind === asset.kind && item.id === asset.id ? { ...item, storagePath: path, previewPath } : item);
-      await updateStoredAsset(asset.kind, asset.id, { storagePath: path, previewPath });
+      try {
+        await updateStoredAsset(asset.kind, asset.id, { storagePath: path, previewPath });
+      } catch {
+        setAssetError(`${asset.name} se subió a Brilla, pero el navegador no pudo actualizar su copia local.`);
+      }
       if (asset.kind === "media") setMedia((current) => current.map((item) => item.id === asset.id ? { ...item, storagePath: path, previewPath } : item));
       else setBrands((current) => current.map((item) => item.id === asset.id ? { ...item, storagePath: path } : item));
-    } catch {
-      setAssetError(`No pudimos subir ${asset.name}. Permanece guardado en este dispositivo.`);
+    } catch (error) {
+      setAssetError(`No pudimos subir ${asset.name}. ${readableAssetError(error)}`);
     } finally {
       setAssetUploads((count) => Math.max(0, count - 1));
     }
+  };
+  const retryAssetUploads = () => {
+    assetHydratedForRef.current = "";
+    setAssetError("");
+    setAssetRetryNonce((current) => current + 1);
   };
   const upload = async (event: ChangeEvent<HTMLInputElement>) => {
     setAssetError("");
@@ -1031,7 +1069,7 @@ function PortfolioEditor() {
         <div className="mobileProgress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
         <nav className="mobileStepNav" aria-label="Pasos visitados">{steps.map((item, index) => <button key={item[0]} type="button" className={index === step ? "current" : index < maxVisitedStep ? "visited" : ""} disabled={index > maxVisitedStep} onClick={() => requestStep(index)}><span>{index < maxVisitedStep ? "✓" : index + 1}</span>{item[0]}</button>)}</nav>
         <div className="formHeading"><span>{String(step + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
-        {assetError && <div className="assetSyncNotice" role="alert"><span>!</span><p>{assetError}</p><button type="button" onClick={() => setAssetError("")} aria-label="Cerrar aviso">×</button></div>}
+        {assetError && <div className="assetSyncNotice" role="alert"><span>!</span><p>{assetError}</p>{user && <button className="assetRetryButton" type="button" onClick={retryAssetUploads} disabled={assetUploads > 0}>{assetUploads > 0 ? "Subiendo…" : "Reintentar"}</button>}<button className="assetNoticeClose" type="button" onClick={() => setAssetError("")} aria-label="Cerrar aviso">×</button></div>}
         {step === 2 && data.format === "website" && data.webTemplate === "stories" && data.portfolioCategories.length > 0 && <div className="formPanel"><div className="schemaSummary"><span>✎</span><p><strong>Historia del caso · {data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}</strong><small>Convierte esta categoría en un caso de campaña. Puedes dejar vacío lo que aún no tengas.</small></p></div><Field label="Marca o cliente" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { client: "" }).client} set={(v) => updateCaseStudy("client", v)} placeholder="Nombre de la marca" /><TextArea label="Brief de la marca" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { brief: "" }).brief} set={(v) => updateCaseStudy("brief", v)} /><Field label="Hook de apertura" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { hook: "" }).hook} set={(v) => updateCaseStudy("hook", v)} placeholder="La primera frase del video" /><TextArea label="Resultado" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { result: "" }).result} set={(v) => updateCaseStudy("result", v)} /><TextArea label="Testimonio" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { testimonial: "" }).testimonial} set={(v) => updateCaseStudy("testimonial", v)} /></div>}
         {step === 1 && <div className="formPanel"><AssetSlot title="Retrato principal" text="Aparece en la portada de todas las plantillas." media={portrait} accept="image/*,video/*" onChange={(event) => uploadSpecial("__portrait", event)} onRemove={() => portrait && remove(portrait.id)} /><Field label="Nombre público" value={data.name} set={(v) => update("name", v)} placeholder="Tu nombre" /><Field label="Título profesional" value={data.title} set={(v) => update("title", v)} placeholder="Creadora UGC | Beauty & Lifestyle" /><TextArea label="Sobre ti" value={data.bio} set={(v) => update("bio", v)} />{data.format === "website" && ["personal", "postcard"].includes(data.webTemplate) && <TextArea label="Así creo contenido · entrada de diario" value={data.creativeDiary} set={(v) => update("creativeDiary", v)} />}{data.format === "website" && data.webTemplate === "talent" && <Field label="Idiomas" value={data.languages} set={(v) => update("languages", v)} placeholder="Español · Inglés" />}<Field label="Ubicación" value={data.location} set={(v) => update("location", v)} placeholder="Ciudad, País" /><Choice title="Nichos principales" options={nicheOptions} selected={data.niches} toggle={(v) => toggle("niches", v)} /></div>}
         {step === 0 && <div className="formPanel"><div className="choiceField templateFamily"><span>Plantillas de página web <small>{websiteOptions.length} estilos profesionales</small></span><p>Sitios verticales con navegación, secciones y transiciones suaves.</p><div className="themeCards webThemeCards">{websiteOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "website" ? data.webTemplate : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "website", webTemplate: mode, fontStyle }))} />)}</div></div><div className="templateDivider"><span>O ELIGE UNA EXPERIENCIA PRESENTACIONAL</span></div><div className="choiceField templateFamily"><span>Plantillas presentacionales <small>7 estilos</small></span><p>Láminas horizontales con navegación por gestos y flechas.</p><div className="themeCards">{templateOptions.map((item) => <Theme key={item.mode} {...item} current={data.format === "presentation" ? data.template : ""} choose={(mode, fontStyle) => setData((current) => ({ ...current, format: "presentation", template: mode, fontStyle }))} />)}</div></div><div className="choiceField"><span>Tipo de letra</span><div className="fontCards">{fontOptions.map((font) => <button key={font.value} className={data.fontStyle === font.value ? "selected" : ""} onClick={() => update("fontStyle", font.value)}><b>{font.sample}</b><span>{font.name}</span><small>{font.note}</small></button>)}</div></div><div className="choiceField colorChoice"><span>Color de acento del portafolio</span><div>{colors.map((color) => <button key={color} aria-label={`Elegir ${color}`} className={data.accent === color ? "selected" : ""} style={{ background: color }} onClick={() => update("accent", color)} />)}<label><input aria-label="Color personalizado" type="color" value={data.accent || "#6d4dff"} onChange={(e) => update("accent", e.target.value)} />＋</label></div></div></div>}

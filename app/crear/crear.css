@@ -103,3 +103,9 @@
 }
 
 @media(max-width:680px) and (prefers-reduced-motion:reduce){.mobilePreviewBackdrop,.livePreview{transition:none}}
+
+.assetSyncNotice:has(.assetRetryButton){grid-template-columns:28px minmax(0,1fr) auto auto}
+.assetSyncNotice .assetRetryButton{padding:8px 11px;border:0;border-radius:99px;color:#fff;background:#812840;cursor:pointer;font-size:.55rem;font-weight:800}
+.assetSyncNotice .assetRetryButton:disabled{cursor:wait;opacity:.65}
+.assetSyncNotice .assetNoticeClose{font-size:1rem}
+@media(max-width:680px){.assetSyncNotice:has(.assetRetryButton){grid-template-columns:28px 1fr auto}.assetSyncNotice .assetRetryButton{grid-column:2;justify-self:start}.assetSyncNotice .assetNoticeClose{grid-column:3;grid-row:1}}
