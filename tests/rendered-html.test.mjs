@@ -89,6 +89,23 @@ test("starts the generation form empty and uses examples only as placeholders", 
   assert.match(editor, /placeholder="Ej\. 50\.5 mil"/);
 });
 
+test("omits portfolio elements whose form fields are empty", async () => {
+  const [editor, experiences, pdf] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-experiences.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-pdf.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /const hasAudience = hasAnyText/);
+  assert.match(editor, /countries\.length > 0 && <div className="countryBars"/);
+  assert.match(editor, /hasText\(data\.collabRate\) && <article>/);
+  assert.match(editor, /showAudience \? \[<AudienceSlide/);
+  assert.match(experiences, /countries\.length > 0 && <div><small>DESTINOS PRINCIPALES/);
+  assert.match(experiences, /hasText\(data\.womenAudience\) && <span>/);
+  assert.match(pdf, /if \(portfolio\.topCountries\.trim\(\)\)/);
+  assert.match(pdf, /\.filter\(\(\[, value\]\) => value\.trim\(\)\)/);
+});
+
 test("uses resumable uploads for large mobile media and accepts iPhone images", async () => {
   const [editor, migration, manifest] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),

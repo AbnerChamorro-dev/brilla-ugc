@@ -187,13 +187,14 @@ async function coverPage(document: PDFDocument, portfolio: Portfolio, media: Med
   }
 
   sectionLabel(page, "MEDIA KIT", MARGIN, 650, fonts, theme);
-  let y = textBlock(page, portfolio.name || "Tu nombre", { x: MARGIN, y: 606, width: 275, size: 34, font: fonts.bold, color: theme.ink, lineHeight: 36, maxLines: 3 });
+  let y = 606;
+  if (portfolio.name.trim()) y = textBlock(page, portfolio.name, { x: MARGIN, y, width: 275, size: 34, font: fonts.bold, color: theme.ink, lineHeight: 36, maxLines: 3 });
   y -= 20;
-  y = textBlock(page, portfolio.title, { x: MARGIN, y, width: 275, size: 16, font: fonts.italic, color: theme.accent, lineHeight: 21, maxLines: 4 });
+  if (portfolio.title.trim()) y = textBlock(page, portfolio.title, { x: MARGIN, y, width: 275, size: 16, font: fonts.italic, color: theme.accent, lineHeight: 21, maxLines: 4 });
   y -= 16;
-  textBlock(page, portfolio.bio, { x: MARGIN, y, width: 275, size: 10, font: fonts.regular, color: theme.muted, lineHeight: 15, maxLines: 7 });
-  page.drawText(safePdfText(portfolio.location || ""), { x: MARGIN, y: 145, size: 9, font: fonts.bold, color: theme.ink });
-  page.drawText(safePdfText(portfolio.availability || ""), { x: MARGIN, y: 125, size: 8, font: fonts.regular, color: theme.muted });
+  if (portfolio.bio.trim()) textBlock(page, portfolio.bio, { x: MARGIN, y, width: 275, size: 10, font: fonts.regular, color: theme.muted, lineHeight: 15, maxLines: 7 });
+  if (portfolio.location.trim()) page.drawText(safePdfText(portfolio.location), { x: MARGIN, y: 145, size: 9, font: fonts.bold, color: theme.ink });
+  if (portfolio.availability.trim()) page.drawText(safePdfText(portfolio.availability), { x: MARGIN, y: 125, size: 8, font: fonts.regular, color: theme.muted });
 }
 
 async function profilePage(document: PDFDocument, portfolio: Portfolio, brands: BrandAsset[], fonts: PdfFonts, theme: PdfTheme) {
@@ -201,20 +202,25 @@ async function profilePage(document: PDFDocument, portfolio: Portfolio, brands: 
   sectionLabel(page, "01 - PERFIL Y AUDIENCIA", MARGIN, 780, fonts, theme);
   textBlock(page, "Una comunidad lista para descubrir nuevas historias.", { x: MARGIN, y: 738, width: 480, size: 27, font: fonts.bold, color: theme.ink, lineHeight: 31, maxLines: 3 });
 
-  const metricWidth = (PAGE_WIDTH - MARGIN * 2 - 20) / 3;
-  drawMetric(page, "Seguidores", portfolio.followers, MARGIN, 550, metricWidth, fonts, theme);
-  drawMetric(page, "Vistas mensuales", portfolio.monthlyViews, MARGIN + metricWidth + 10, 550, metricWidth, fonts, theme);
-  drawMetric(page, "Audiencia femenina", portfolio.womenAudience, MARGIN + (metricWidth + 10) * 2, 550, metricWidth, fonts, theme);
+  const metrics = [["Seguidores", portfolio.followers], ["Vistas mensuales", portfolio.monthlyViews], ["Audiencia femenina", portfolio.womenAudience]].filter(([, value]) => value.trim());
+  const metricWidth = (PAGE_WIDTH - MARGIN * 2 - Math.max(0, metrics.length - 1) * 10) / Math.max(1, metrics.length);
+  metrics.forEach(([label, value], index) => drawMetric(page, label, value, MARGIN + (metricWidth + 10) * index, 550, metricWidth, fonts, theme));
 
-  sectionLabel(page, "SOBRE MI", MARGIN, 502, fonts, theme);
-  textBlock(page, portfolio.bio, { x: MARGIN, y: 474, width: 310, size: 11, font: fonts.regular, color: theme.muted, lineHeight: 17, maxLines: 8 });
+  if (portfolio.bio.trim()) {
+    sectionLabel(page, "SOBRE MI", MARGIN, 502, fonts, theme);
+    textBlock(page, portfolio.bio, { x: MARGIN, y: 474, width: 310, size: 11, font: fonts.regular, color: theme.muted, lineHeight: 17, maxLines: 8 });
+  }
 
-  sectionLabel(page, "NICHO Y ENFOQUE", 382, 502, fonts, theme);
-  let pillY = 472;
-  portfolio.niches.slice(0, 7).forEach((niche) => { pill(page, niche, 382, pillY, fonts, theme, 160); pillY -= 32; });
+  if (portfolio.niches.length > 0) {
+    sectionLabel(page, "NICHO Y ENFOQUE", 382, 502, fonts, theme);
+    let pillY = 472;
+    portfolio.niches.slice(0, 7).forEach((niche) => { pill(page, niche, 382, pillY, fonts, theme, 160); pillY -= 32; });
+  }
 
-  sectionLabel(page, "PRINCIPALES UBICACIONES", MARGIN, 310, fonts, theme);
-  textBlock(page, portfolio.topCountries, { x: MARGIN, y: 278, width: 500, size: 11, font: fonts.regular, color: theme.ink, lineHeight: 18, maxLines: 5 });
+  if (portfolio.topCountries.trim()) {
+    sectionLabel(page, "PRINCIPALES UBICACIONES", MARGIN, 310, fonts, theme);
+    textBlock(page, portfolio.topCountries, { x: MARGIN, y: 278, width: 500, size: 11, font: fonts.regular, color: theme.ink, lineHeight: 18, maxLines: 5 });
+  }
 
   if (brands.length > 0) {
     sectionLabel(page, "MARCAS Y EXPERIENCIA", MARGIN, 180, fonts, theme);
@@ -260,7 +266,7 @@ function offerPage(document: PDFDocument, portfolio: Portfolio, fonts: PdfFonts,
   sectionLabel(page, "03 - SERVICIOS Y TARIFAS", MARGIN, 780, fonts, theme);
   textBlock(page, "Una propuesta clara para hacer realidad la siguiente campaña.", { x: MARGIN, y: 740, width: 500, size: 25, font: fonts.bold, color: theme.ink, lineHeight: 30, maxLines: 3 });
 
-  sectionLabel(page, "SERVICIOS", MARGIN, 635, fonts, theme);
+  if (portfolio.services.length > 0) sectionLabel(page, "SERVICIOS", MARGIN, 635, fonts, theme);
   let serviceY = 602;
   portfolio.services.slice(0, 8).forEach((service, index) => {
     page.drawCircle({ x: MARGIN + 7, y: serviceY + 4, size: 7, color: theme.accent });
@@ -269,8 +275,10 @@ function offerPage(document: PDFDocument, portfolio: Portfolio, fonts: PdfFonts,
     serviceY -= 31;
   });
 
-  sectionLabel(page, "INCLUYE", MARGIN, 340, fonts, theme);
-  textBlock(page, portfolio.includes.map((item) => `+ ${item}`).join("   "), { x: MARGIN, y: 310, width: 225, size: 9, font: fonts.regular, color: theme.muted, lineHeight: 15, maxLines: 9 });
+  if (portfolio.includes.length > 0) {
+    sectionLabel(page, "INCLUYE", MARGIN, 340, fonts, theme);
+    textBlock(page, portfolio.includes.map((item) => `+ ${item}`).join("   "), { x: MARGIN, y: 310, width: 225, size: 9, font: fonts.regular, color: theme.muted, lineHeight: 15, maxLines: 9 });
+  }
 
   const rates = [
     ["Video UGC", portfolio.videoRate],
@@ -278,9 +286,9 @@ function offerPage(document: PDFDocument, portfolio: Portfolio, fonts: PdfFonts,
     ["1 historia con CTA", portfolio.storyRate],
     ["Pack de historias", portfolio.storyPackRate],
     ["Derechos de pauta / mes", portfolio.usageRate],
-  ];
-  page.drawRectangle({ x: 310, y: 260, width: 243, height: 378, color: theme.ink });
-  page.drawText("TARIFAS", { x: 332, y: 600, size: 8, font: fonts.bold, color: theme.accent });
+  ].filter(([, value]) => value.trim());
+  if (rates.length > 0) page.drawRectangle({ x: 310, y: 260, width: 243, height: 378, color: theme.ink });
+  if (rates.length > 0) page.drawText("TARIFAS", { x: 332, y: 600, size: 8, font: fonts.bold, color: theme.accent });
   rates.forEach(([name, value], index) => {
     const y = 552 - index * 62;
     page.drawText(safePdfText(name), { x: 332, y, size: 9, font: fonts.regular, color: theme.paper });
@@ -297,7 +305,7 @@ function contactPage(document: PDFDocument, portfolio: Portfolio, fonts: PdfFont
   page.drawText("brilla", { x: MARGIN, y: 778, size: 18, font: fonts.bold, color: theme.paper });
   sectionLabel(page, "HABLEMOS", MARGIN, 650, fonts, theme);
   textBlock(page, "Tu marca merece una historia que la gente quiera ver.", { x: MARGIN, y: 600, width: 470, size: 34, font: fonts.bold, color: theme.paper, lineHeight: 39, maxLines: 4 });
-  textBlock(page, portfolio.availability, { x: MARGIN, y: 420, width: 470, size: 13, font: fonts.italic, color: theme.accent, lineHeight: 18, maxLines: 3 });
+  if (portfolio.availability.trim()) textBlock(page, portfolio.availability, { x: MARGIN, y: 420, width: 470, size: 13, font: fonts.italic, color: theme.accent, lineHeight: 18, maxLines: 3 });
 
   const contacts = [
     ["EMAIL", portfolio.email], ["WHATSAPP", portfolio.whatsapp],
