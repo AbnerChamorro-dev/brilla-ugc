@@ -41,3 +41,14 @@
 .websitePortfolio.expanded .webRates{padding:70px 22px}.websitePortfolio.expanded .rateBoard{grid-template-columns:1fr;gap:12px}.websitePortfolio.expanded .rateHero{padding:24px;border-radius:20px}.websitePortfolio.expanded.website-chic .rateHero{border-radius:0}.websitePortfolio.expanded .rateHero small{font-size:.6rem}.websitePortfolio.expanded .rateHero h3{margin:10px 0 4px;font-size:1.6rem}.websitePortfolio.expanded .rateHero>b{margin-bottom:14px;font-size:1.4rem}.websitePortfolio.expanded .rateHero li{gap:8px;font-size:.82rem}.websitePortfolio.expanded .rateHero li i{width:16px;height:16px;font-size:.55rem}.websitePortfolio.expanded .rateGrid{grid-template-columns:1fr 1fr;gap:10px}.websitePortfolio.expanded .rateGrid article{padding:16px;gap:10px;border-radius:14px}.websitePortfolio.expanded .rateGrid span{font-size:.62rem}.websitePortfolio.expanded .rateGrid b{font-size:1.05rem}
 .websitePortfolio.expanded .webContact{padding:80px 22px}.websitePortfolio.expanded .webContact h2{max-width:none;font-size:2.4rem}.websitePortfolio.expanded .contactCta{gap:14px;padding:13px 18px;font-size:.75rem}.websitePortfolio.expanded .contactCta span{width:22px;height:22px}.websitePortfolio.expanded .contactGrid{gap:22px;margin-top:36px}.websitePortfolio.expanded .contactGrid p{font-size:.85rem}.websitePortfolio.expanded .contactGrid p b{font-size:.54rem}.websitePortfolio.expanded .contactNote{margin-top:24px;font-size:1.15rem}
 .websitePortfolio.expanded .siteFooter{flex-direction:column;gap:8px;padding:22px;font-size:.68rem}}
+
+/* Keep the selected visual direction legible in both cards and the rendered site. */
+.themePreview.pop{background:linear-gradient(135deg,color-mix(in srgb,var(--theme-accent),#fff 76%),color-mix(in srgb,var(--theme-accent),#fff 58%))}
+.themePreview.retro{background-color:color-mix(in srgb,var(--theme-accent),#f8efdd 88%);background-image:radial-gradient(color-mix(in srgb,var(--theme-accent),transparent 74%) 1px,transparent 1px)}
+.themePreview.chic{background:color-mix(in srgb,var(--theme-accent),#fff 92%)}
+.themePreview.bold{background:color-mix(in srgb,var(--theme-accent),#fff 60%)}
+.webThemeCards .themePreview u{background:linear-gradient(145deg,color-mix(in srgb,var(--theme-accent),#fff 48%),var(--theme-accent))}
+.themePreview.bold u{background:var(--theme-accent)}
+.heroCta{display:inline-flex;align-items:center;justify-content:center;min-width:88px;min-height:28px;padding:max(7px,1.05cqw) max(10px,1.6cqw);font-size:max(7px,.75cqw);font-weight:850;box-shadow:0 4px 12px color-mix(in srgb,var(--site-accent),transparent 65%)}
+.heroGhost{display:inline-flex;align-items:center;min-height:28px;padding:max(7px,1.05cqw) max(10px,1.6cqw);font-size:max(7px,.75cqw)}
+.webMarquee{display:block;width:100%;max-width:none}

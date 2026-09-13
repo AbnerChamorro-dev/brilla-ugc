@@ -47,7 +47,8 @@ test("offers six narrative UGC portfolio experiences wired to the editor", async
   assert.match(experiences, /function ShowreelFirstPortfolio/);
   assert.match(experiences, /function TalentProfilePortfolio/);
   assert.match(experiences, /function PostcardJournalPortfolio/);
-  assert.match(experiences, /usePhotoAccent/);
+  assert.match(experiences, /portfolioAccent/);
+  assert.doesNotMatch(experiences, /usePhotoAccent/);
   assert.match(styles, /\.campaignStories/);
   assert.match(styles, /\.personalScrapbook/);
   assert.match(styles, /\.showreelFirst/);
@@ -68,7 +69,7 @@ test("turns the mobile editor into an app-like wizard with a preview sheet", asy
   assert.match(editor, /mobilePreviewLauncher/);
   assert.match(editor, /mobilePreviewBackdrop/);
   assert.match(editor, /mobilePreviewToggle/);
-  assert.match(editor, /Pantalla completa/);
+  assert.match(editor, /Abrir vista/);
   assert.match(styles, /\.livePreview\.mobilePreviewOpen/);
   assert.match(styles, /\.builderActions\{position:sticky/);
   assert.match(styles, /scroll-snap-type:x mandatory/);
@@ -81,7 +82,7 @@ test("starts the generation form empty and uses examples only as placeholders", 
   const editor = await readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8");
 
   assert.match(editor, /name: "", title: "", bio: ""/);
-  assert.match(editor, /niches: \[\], format: "", webTemplate: "", template: "", fontStyle: "", accent: "", portfolioCategories: \[\]/);
+  assert.match(editor, /niches: \[\], language: "", format: "", webTemplate: "", template: "", fontStyle: "", accent: "", portfolioCategories: \[\]/);
   assert.match(editor, /followers: "", monthlyViews: "", womenAudience: "", topCountries: ""/);
   assert.doesNotMatch(editor, /Sofía Mendoza|sofia\.crea|sofiaugc|sofia-mendoza/i);
   assert.doesNotMatch(editor, /Conectar redes|Conecta tus métricas/i);
