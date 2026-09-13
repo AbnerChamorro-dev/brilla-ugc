@@ -20,6 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(origin),
     title: "Brilla — Portafolios para creadoras UGC",
     description: "Crea gratis en 2 minutos un portafolio UGC responsivo con video, métricas, enlace profesional y PDF.",
+    icons: {
+      icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+      shortcut: "/favicon.svg",
+    },
     openGraph: {
       title: "Brilla — Tu portafolio UGC gratis en 2 minutos",
       description: "Web responsiva, video, métricas y PDF. Todo en un único enlace profesional.",

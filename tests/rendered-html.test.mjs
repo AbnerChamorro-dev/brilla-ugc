@@ -3,13 +3,17 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("keeps the Brilla product and native Next.js routes", async () => {
-  const [home, layout, manifest] = await Promise.all([
+  const [home, layout, manifest, favicon] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../public/favicon.svg", import.meta.url), "utf8"),
   ]);
 
   assert.match(layout, /Brilla — Portafolios para creadoras UGC/i);
+  assert.match(layout, /url: "\/favicon\.svg"/);
+  assert.match(favicon, /#17132F/);
+  assert.match(favicon, /#6D4DFF/);
   assert.match(home, /Tu portafolio listo/i);
   assert.match(home, /href="\/crear"/i);
   assert.doesNotMatch(home, /codex-preview|Building your site|react-loading-skeleton/i);
@@ -469,4 +473,19 @@ test("requires explicit, versioned legal consent before Google access", async ()
   assert.doesNotMatch(migration, /grant (?:update|delete)/i);
   assert.match(consentTextMigration, /alter column authorization_text set default/i);
   assert.match(consentTextMigration, /He leído y acepto la Política de Tratamiento de Datos y los Términos de Uso de Brilla/i);
+});
+
+test("requires WhatsApp to publish and routes collaboration CTAs to it", async () => {
+  const [editor, experiences] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-experiences.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /function validWhatsapp\(value: string\)/);
+  assert.match(editor, /Agrega un número de WhatsApp válido con código de país antes de publicar/);
+  assert.match(editor, /disabled=\{publishBusy \|\| slugState === "checking" \|\| !validWhatsapp\(data\.whatsapp\)\}/);
+  assert.match(editor, /className="navContact" href=\{whatsappLink\(data\.whatsapp\)\}/);
+  assert.match(editor, /className="deckWhatsappCta" href=\{whatsappLink\(data\.whatsapp\)\}/);
+  assert.match(experiences, /className="feedNavCta" href=\{whatsappLink\(data\.whatsapp\)\}/);
+  assert.match(experiences, /className="srFloatingContact" href=\{whatsappLink\(data\.whatsapp\)\}/);
 });

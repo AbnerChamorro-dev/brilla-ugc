@@ -34,6 +34,9 @@
 @media(max-width:680px){.identityAuthOverlay{align-items:end;padding:12px}.identityAuthCard{padding:32px 22px 25px;border-radius:26px}.identityAuthCard h2{font-size:2.65rem}}
 @media(prefers-reduced-motion:reduce){.identityAuthOverlay,.identityAuthCard{animation:none}}
 
+/* WhatsApp is the required collaboration channel for published portfolios. */
+.requiredBadge{padding:4px 7px;border-radius:99px;color:#7d2241;background:#ffe4ec;font-size:.43rem;white-space:nowrap}.builderField input:required:invalid{border-color:#efb7c5}.publishRequirement{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:10px;padding:12px;border:1px solid #f0b8c8;border-radius:13px;background:#fff4f7}.publishRequirement>span{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;color:#fff;background:#df456b;font-size:.7rem;font-weight:900}.publishRequirement p{display:grid;gap:2px;margin:0}.publishRequirement strong{font-size:.61rem}.publishRequirement small{color:#8c6470;font-size:.5rem;line-height:1.4}.publishRequirement button{padding:8px 10px;border:0;border-radius:99px;color:#fff;background:#211a49;cursor:pointer;font-size:.51rem;font-weight:800}.publishRequirement.complete{border-color:#a8e7d6;background:#f1fff9}.publishRequirement.complete>span{color:#174236;background:#70f0cf}.publishRequirement.complete small{color:#567068}@media(max-width:680px){.publishRequirement{grid-template-columns:30px 1fr}.publishRequirement button{grid-column:1/-1}.requiredBadge{font-size:.39rem}}
+
 /* Mobile app shell: focused steps, thumb-friendly controls and a preview sheet. */
 @media(max-width:680px){
   .builderTopbar{position:sticky;z-index:120;top:0;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;height:64px;padding:0 14px;padding-top:env(safe-area-inset-top);box-shadow:0 6px 24px #211a4910}
@@ -86,7 +89,7 @@
   .nextButton{font-size:.72rem}
   .mobilePreviewBackdrop{position:fixed;z-index:180;inset:0;display:block;border:0;background:#17132f80;opacity:0;pointer-events:none;transition:opacity .22s ease}
   .mobilePreviewBackdrop.isOpen{opacity:1;pointer-events:auto}
-  .livePreview{position:fixed;z-index:190;left:0;right:0;bottom:0;display:block;height:min(78svh,720px);padding:12px 14px calc(14px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;box-shadow:0 -28px 70px #08061f55;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);pointer-events:none}
+  .livePreview{position:fixed;z-index:190;top:auto;left:0;right:0;bottom:0;display:block;height:min(78svh,720px);padding:12px 14px calc(14px + env(safe-area-inset-bottom));border-radius:24px 24px 0 0;box-shadow:0 -28px 70px #08061f55;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);pointer-events:none}
   .livePreview.mobilePreviewOpen{transform:none;pointer-events:auto}
   .livePreview:before{content:"";display:block;width:42px;height:4px;margin:0 auto 8px;border-radius:99px;background:#ffffff45}
   .previewHeader{height:48px;align-items:center;gap:8px}
@@ -101,6 +104,14 @@
   .livePreview>.creatorFeed.compact,
   .livePreview>.portfolioExperiencePage.compact{height:calc(100% - 60px);min-height:0;border-radius:10px}
   .livePreview>.portfolioDeck.compact{max-height:calc(100% - 60px);margin:auto}
+}
+
+@media(max-width:360px){
+  .builderTopbar{grid-template-columns:auto 1fr;gap:8px}
+  .builderStatus{display:none}
+  .builderTopActions{justify-self:end}
+  .mobilePreviewLauncher{padding-inline:10px}
+  .formHeading h1{font-size:2.2rem}
 }
 
 /* Template-local controls keep color and type choices next to the active design. */

@@ -218,6 +218,7 @@ h1 em { color: var(--rose); font-weight: 400; }
   .heroText { font-size: 1rem; }
   .heroActions { flex-direction: column; gap: 17px; }
   .heroVisual { height: 540px; border-radius: 44% 44% 48% 45%; }
+  .phoneShadow { transform: translateY(28px) rotate(5deg); }
   .phone { width: 226px; height: 466px; }
   .noteCard { top: 45px; }
   .resultCard { bottom: 39px; }
