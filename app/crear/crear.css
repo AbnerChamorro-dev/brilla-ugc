@@ -70,11 +70,11 @@
   .templateFamily{min-width:0}
   .templateFamily>.themeCards{display:flex;gap:12px;margin-right:-18px;overflow-x:auto;padding:3px 18px 14px 2px;scroll-padding-left:2px;scroll-snap-type:x mandatory;scrollbar-width:none}
   .templateFamily>.themeCards::-webkit-scrollbar{display:none}
-  .templateFamily>.themeCards>button{width:min(76vw,285px);flex:0 0 auto;padding:8px 8px 12px;scroll-snap-align:start}
+  .templateFamily>.themeCards>.themeCard{width:min(88vw,340px);flex:0 0 auto;scroll-snap-align:start}
   .templateFamily .themePreview{height:132px}
-  .templateFamily .themeCards>button>strong{font-size:.78rem}
-  .templateFamily .themeCards>button>small{font-size:.62rem}
-  .templateFamily .themeCards>button>span{font-size:.54rem}
+  .templateFamily .themeSelectButton>strong{font-size:.78rem}
+  .templateFamily .themeSelectButton>small{font-size:.62rem}
+  .templateFamily .themeSelectButton>span{font-size:.54rem}
   .fontCards{gap:10px}
   .fontCards button{min-height:88px;padding:13px 11px}
   .mediaDrop{min-height:190px;padding:20px;text-align:center}
@@ -102,6 +102,20 @@
   .livePreview>.portfolioExperiencePage.compact{height:calc(100% - 60px);min-height:0;border-radius:10px}
   .livePreview>.portfolioDeck.compact{max-height:calc(100% - 60px);margin:auto}
 }
+
+/* Template-local controls keep color and type choices next to the active design. */
+.languageSettings{position:static;grid-template-columns:1fr}
+.themeCard{min-width:0;overflow:hidden;border:1px solid #dcd6ed;border-radius:14px;background:#fff;transition:border-color .2s ease,box-shadow .2s ease}
+.themeCard.selected{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(210px,.85fr);gap:12px;padding:8px;border-color:var(--theme-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--theme-accent),transparent 76%)}
+.themeSelectButton{display:grid;width:100%;gap:4px;padding:6px 6px 10px;border:0;color:#211d32;background:transparent;text-align:left;cursor:pointer}
+.themeSelectButton>strong,.themeSelectButton>small,.themeSelectButton>span{padding:0 4px}
+.themeSelectButton>strong{font-size:.62rem}.themeSelectButton>small{color:#91899f;font-size:.49rem}.themeSelectButton>span{color:#aaa1b4;font-size:.43rem}
+.templateQuickControls{display:grid;align-content:center;gap:13px;padding:12px;border-radius:11px;background:#f4f1ff}
+.templateQuickControls>div{display:grid;gap:7px}.templateQuickControls>div>strong{font-size:.53rem;letter-spacing:.08em;text-transform:uppercase}
+.quickColors{display:flex;flex-wrap:wrap;gap:6px}.quickColors button,.quickColors label{position:relative;display:grid;place-items:center;width:25px;height:25px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #cfc7e4;cursor:pointer}.quickColors button.selected:after{content:"✓";color:#fff;font-size:.48rem;text-shadow:0 1px 3px #0009}.quickColors label{color:#6f6882;background:#fff}.quickColors input{position:absolute;width:1px;height:1px;opacity:0}
+.quickFonts{display:grid;grid-template-columns:1fr 1fr;gap:5px}.quickFonts button{display:flex;align-items:center;gap:6px;min-width:0;padding:7px;border:1px solid #dcd6ed;border-radius:8px;color:#625b74;background:#fff;cursor:pointer}.quickFonts button>b{font-size:.72rem}.quickFonts button>span{overflow:hidden;font-size:.48rem;font-weight:750;text-overflow:ellipsis;white-space:nowrap}.quickFonts button.selected{border-color:var(--theme-accent);color:#201a36;background:color-mix(in srgb,var(--theme-accent),#fff 88%)}
+
+@media(max-width:680px){.themeCard.selected{grid-template-columns:1fr}.templateQuickControls{padding:11px}.quickFonts{grid-template-columns:1fr 1fr}}
 
 @media(max-width:680px) and (prefers-reduced-motion:reduce){.mobilePreviewBackdrop,.livePreview{transition:none}}
 

@@ -127,6 +127,31 @@ test("uses resumable uploads for large mobile media and accepts iPhone images", 
   assert.match(manifest, /"tus-js-client": "4\.3\.1"/);
 });
 
+test("replaces special cover assets without stale previews", async () => {
+  const [editor, experiences] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-experiences.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /revision:\s*`\$\{file\.lastModified\}-\$\{file\.size\}`/);
+  assert.match(editor, /asset\.id\}\$\{revision\}/);
+  assert.match(editor, /current\.filter\(\(asset\) => asset\.category === slot\)/);
+  assert.match(experiences, /const heroItem = portrait \?\? work\.find/);
+});
+
+test("keeps color and typography controls beside the selected template", async () => {
+  const [editor, styles] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/crear.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(editor, /className="templateQuickControls"/);
+  assert.match(editor, /className="quickColors"/);
+  assert.match(editor, /className="quickFonts"/);
+  assert.match(styles, /\.themeCard\.selected/);
+  assert.match(styles, /\.templateQuickControls/);
+});
+
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
   const [editor, account, layout, authRedirectHandler, authRedirect, migration] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),

@@ -134,7 +134,8 @@ export function PersonalScrapbookPortfolio({ data, media, brands, schema, expand
 export function ShowreelFirstPortfolio({ data, media, brands, schema, expanded }: ExperienceProps) {
   const portrait = media.find((item) => item.category === "__portrait") ?? null;
   const work = visibleWork(data, media);
-  const heroItem = work.find((item) => item.type === "video") ?? work[0] ?? portrait;
+  // "Retrato principal" is the cover selected by the creator in every template.
+  const heroItem = portrait ?? work.find((item) => item.type === "video") ?? work[0] ?? null;
   const groups = categoryGroups(data, media, schema);
   return <div className={`portfolioExperiencePage showreelFirst font-${data.fontStyle} ${expanded ? "expanded" : "compact"}`} style={{ "--experience-accent": portfolioAccent(data) } as CSSProperties}>
     {hasText(data.email) && <a className="srFloatingContact" href={emailLink(data.email)} data-analytics-target="email">{portfolioText(data, "Trabajemos", "Let's work")} <span>↗</span></a>}
