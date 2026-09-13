@@ -114,6 +114,7 @@
 .templateQuickControls>div{display:grid;gap:7px}.templateQuickControls>div>strong{font-size:.53rem;letter-spacing:.08em;text-transform:uppercase}
 .quickColors{display:flex;flex-wrap:wrap;gap:6px}.quickColors button,.quickColors label{position:relative;display:grid;place-items:center;width:25px;height:25px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #cfc7e4;cursor:pointer}.quickColors button.selected:after{content:"✓";color:#fff;font-size:.48rem;text-shadow:0 1px 3px #0009}.quickColors label{color:#6f6882;background:#fff}.quickColors input{position:absolute;width:1px;height:1px;opacity:0}
 .quickFonts{display:grid;grid-template-columns:1fr 1fr;gap:5px}.quickFonts button{display:flex;align-items:center;gap:6px;min-width:0;padding:7px;border:1px solid #dcd6ed;border-radius:8px;color:#625b74;background:#fff;cursor:pointer}.quickFonts button>b{font-size:.72rem}.quickFonts button>span{overflow:hidden;font-size:.48rem;font-weight:750;text-overflow:ellipsis;white-space:nowrap}.quickFonts button.selected{border-color:var(--theme-accent);color:#201a36;background:color-mix(in srgb,var(--theme-accent),#fff 88%)}
+.resetTemplateStyle{justify-self:start;padding:7px 10px;border:1px solid #d5cfea;border-radius:999px;color:#5f5773;background:#fff;font-size:.48rem;font-weight:800;letter-spacing:.02em;cursor:pointer}.resetTemplateStyle:hover{border-color:var(--theme-accent);color:#211a36}
 
 @media(max-width:680px){.themeCard.selected{grid-template-columns:1fr}.templateQuickControls{padding:11px}.quickFonts{grid-template-columns:1fr 1fr}}
 

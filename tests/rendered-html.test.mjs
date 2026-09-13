@@ -148,8 +148,28 @@ test("keeps color and typography controls beside the selected template", async (
   assert.match(editor, /className="templateQuickControls"/);
   assert.match(editor, /className="quickColors"/);
   assert.match(editor, /className="quickFonts"/);
+  assert.match(editor, /Restablecer estilo/);
+  assert.match(editor, /resetStyle\(defaultAccent, defaultFont\)/);
   assert.match(styles, /\.themeCard\.selected/);
   assert.match(styles, /\.templateQuickControls/);
+  assert.match(styles, /\.resetTemplateStyle/);
+});
+
+test("translates selectable portfolio values when English is selected", async () => {
+  const [editor, experiences, translations] = await Promise.all([
+    readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-experiences.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/portfolio-i18n.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(translations, /"Campañas": "Campaigns"/);
+  assert.match(translations, /"Maternidad": "Motherhood"/);
+  assert.match(translations, /"Cuidado del cabello": "Haircare"/);
+  assert.match(translations, /"Concepto creativo": "Creative Concept"/);
+  assert.match(editor, /portfolioOption\(data, type\)/);
+  assert.match(editor, /portfolioOption\(\{ language \}, option\)/);
+  assert.match(experiences, /portfolioOption\(data, group\.category\)/);
+  assert.match(experiences, /portfolioOptions\(data, data\.includes\)/);
 });
 
 test("keeps Google auth and durable portfolio storage wired safely", async () => {
