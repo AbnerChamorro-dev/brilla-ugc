@@ -144,3 +144,8 @@
 .assetSyncNotice .assetRetryButton:disabled{cursor:wait;opacity:.65}
 .assetSyncNotice .assetNoticeClose{font-size:1rem}
 @media(max-width:680px){.assetSyncNotice:has(.assetRetryButton){grid-template-columns:28px 1fr auto}.assetSyncNotice .assetRetryButton{grid-column:2;justify-self:start}.assetSyncNotice .assetNoticeClose{grid-column:3;grid-row:1}}
+
+.editorLoading{display:flex;min-height:70vh;align-items:center;justify-content:center;flex-direction:column;gap:20px;padding:32px;text-align:center}.editorLoading h1{font-size:2.5rem}.editorLoading button,.draftRecovery button{min-height:44px;padding:10px 16px;border:1px solid #d3cce4;border-radius:12px;background:#fff;color:#211a49;cursor:pointer}.draftRecovery{padding:16px;margin-top:16px;border:1px solid #bcb0e8;border-radius:12px;background:#f1edff;font-size:.8rem}.draftRecovery p{line-height:1.5}.draftRecovery button{margin:4px}
+
+/* Shape-based check marks keep their appearance in mobile system fonts. */
+.colorChoice button.selected:after,.quickColors button.selected:after{content:"";position:absolute;inset:auto;left:50%;top:45%;width:7px;height:12px;border:solid #fff;border-width:0 2px 2px 0;transform:translate(-50%,-50%) rotate(45deg);border-radius:0;background:transparent;box-shadow:none;text-shadow:none}

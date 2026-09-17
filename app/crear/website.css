@@ -52,3 +52,5 @@
 .heroCta{display:inline-flex;align-items:center;justify-content:center;min-width:88px;min-height:28px;padding:max(7px,1.05cqw) max(10px,1.6cqw);font-size:max(7px,.75cqw);font-weight:850;box-shadow:0 4px 12px color-mix(in srgb,var(--site-accent),transparent 65%)}
 .heroGhost{display:inline-flex;align-items:center;min-height:28px;padding:max(7px,1.05cqw) max(10px,1.6cqw);font-size:max(7px,.75cqw)}
 .webMarquee{display:block;width:100%;max-width:none}
+
+.website-pop .siteHero:before{content:"";width:1em;height:1em;background:currentColor;clip-path:polygon(50% 0,65% 35%,100% 50%,65% 65%,50% 100%,35% 65%,0 50%,35% 35%)}

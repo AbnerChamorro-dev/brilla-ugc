@@ -264,3 +264,7 @@ h1 em { color: var(--rose); font-weight: 400; }
 .finalCta .lightButton span { color: #211a49; background: #70f0cf; }
 @media (max-width: 1000px) { .competitiveGrid { grid-template-columns: 1fr 1fr; } .comparisonWrap { grid-template-columns: 1fr; gap: 45px; } .comparisonIntro { position: static; } .freeCard ul { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 620px) { .competitiveGrid { grid-template-columns: 1fr; } .comparisonSection { padding: 85px 0; } .comparisonHead,.comparisonRow { grid-template-columns: .9fr 1.1fr; padding: 16px 14px; gap: 10px; } .comparisonHead span,.comparisonRow span { display: none; } .comparisonRow { font-size: .72rem; } .comparisonRow strong { font-size: .88rem; } .freeCard { grid-template-columns: 1fr; padding: 26px; } .freeCard ul { grid-column: auto; grid-template-columns: 1fr; } .freeCard a { justify-content: center; } }
+
+.homeAccountActions{display:flex;align-items:center;gap:18px}.homeAccountLink{display:inline-flex;align-items:center;min-height:44px;font-size:.88rem;font-weight:700;white-space:nowrap}.homeAccountLink:hover{text-decoration:underline}.homeAccountLink:focus-visible{outline:2px solid var(--rose);outline-offset:4px}
+@media(max-width:980px){.navLinks{gap:16px;font-size:.8rem}.homeAccountActions{gap:12px}}
+@media(max-width:480px){.nav.shell{width:calc(100% - 24px);gap:8px}.homeAccountActions{gap:9px}.homeAccountLink{font-size:.72rem}.homeAccountActions .navCta{padding:10px;font-size:.68rem}}

@@ -74,3 +74,9 @@ El editor carga `app/crear/portfolio-pdf.ts` únicamente cuando la creadora soli
 Las páginas públicas `/privacidad` y `/terminos` contienen la versión vigente de los documentos legales. Los dos accesos con Google exigen una casilla sin premarcar que presenta la autorización expresa y enlaza ambos documentos antes de iniciar OAuth.
 
 Después de autenticar la identidad, Brilla registra en `creator_legal_consents` el usuario, las versiones aceptadas, el texto exacto, el medio de aceptación y la hora del servidor. La tabla tiene RLS: cada creadora solo puede leer y crear sus propios registros, y el cliente no puede modificar ni eliminar la prueba ni escoger versiones, texto o fecha. Si cambia una versión, una sesión existente debe autorizarla antes de acceder al editor o al panel.
+
+## Regreso al editor y protección de borradores
+
+El editor recupera primero el portafolio de la cuenta y mantiene el formulario bloqueado hasta confirmar la carga. El guardado compara `updated_at` y serializa las escrituras; si otro dispositivo guardó antes, conserva la copia local y permite elegir explícitamente qué versión continuar. Los borradores y archivos locales se separan por usuario. Las copias antiguas sin propietario no se suben automáticamente.
+
+`npm test` incluye las pruebas de aislamiento, recuperación y orden de guardado. Para ejecutar los escenarios de navegador, inicia `npm run start` y ejecuta `BRILLA_PLAYWRIGHT_PATH=/ruta/al/paquete/playwright node tests/browser/portfolio-recovery.mjs` con Chromium y WebKit instalados. Las pruebas usan cuentas y respuestas simuladas; no escriben en Supabase. Las capturas quedan en `outputs/browser` (excluido de Git).

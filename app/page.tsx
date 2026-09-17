@@ -1,8 +1,12 @@
 "use client";
 
+import { Icon } from "./components/brilla-icon";
+
+
 /* The landing page intentionally uses plain anchors for section links and primary CTAs. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 
+import { HomeAccountLink } from "./components/home-account-link";
 import { useRef, useState } from "react";
 
 const benefits = [
@@ -53,17 +57,17 @@ export default function Home() {
           <a href="#portafolios">Ejemplos</a>
           <a href="#comparativa">Brilla vs. Canva</a>
         </div>
-        <a className="navCta" href="/crear">Crear mi portafolio</a>
+        <div className="homeAccountActions"><HomeAccountLink /><a className="navCta" href="/crear">Crear mi portafolio</a></div>
       </nav>
 
       <section className="hero shell" id="inicio">
         <div className="heroCopy">
-          <div className="eyebrow"><span>✦</span> Hecho para creadoras UGC, no para diseñadoras</div>
+          <div className="eyebrow"><span><Icon glyph="✦" /></span> Hecho para creadoras UGC, no para diseñadoras</div>
           <h1>Tu portafolio listo<br /><em>antes de tu próximo Reel.</em></h1>
           <p className="heroText">Convierte tu contenido, métricas y tarifas en una web rápida que las marcas sí quieren abrir. Sin diseñar, sin PDF diminuto y 100% gratis.</p>
           <div className="heroActions">
-            <a className="primaryButton" href="/crear">Crear gratis en 2 min <span>↗</span></a>
-            <a className="textButton" href="#como-funciona"><span className="play">▶</span> Ver cómo funciona</a>
+            <a className="primaryButton" href="/crear">Crear gratis en 2 min <span><Icon glyph="↗" /></span></a>
+            <a className="textButton" href="#como-funciona"><span className="play"><Icon glyph="▶" /></span> Ver cómo funciona</a>
           </div>
           <div className="socialProof">
             <div className="avatars" aria-hidden="true"><span>AM</span><span>LV</span><span>CS</span><span>+</span></div>
@@ -72,8 +76,8 @@ export default function Home() {
         </div>
 
         <div className="heroVisual" aria-label="Ejemplo de un portafolio UGC con video en un marco de teléfono">
-          <div className="spark sparkOne">✦</div><div className="spark sparkTwo">✦</div>
-          <div className="noteCard"><span className="noteIcon">♡</span><p><strong>Contenido que conecta</strong><br />Belleza · Lifestyle · Travel</p></div>
+          <div className="spark sparkOne"><Icon glyph="✦" /></div><div className="spark sparkTwo"><Icon glyph="✦" /></div>
+          <div className="noteCard"><span className="noteIcon"><Icon glyph="♡" /></span><p><strong>Contenido que conecta</strong><br />Belleza · Lifestyle · Travel</p></div>
           <div className="phoneShadow" />
           <div className="phone heroPhone">
             <div className="phoneTop"><span /></div>
@@ -92,27 +96,27 @@ export default function Home() {
               />
               <div className="videoShade" />
               <button className="videoPlay" type="button" onClick={toggleHeroVideo} aria-label={heroVideoPlaying ? "Pausar video de muestra" : "Reproducir video de muestra"} aria-pressed={heroVideoPlaying}>
-                {heroVideoPlaying ? "Ⅱ" : "▶"}
+                <Icon glyph={heroVideoPlaying ? "Ⅱ" : "▶"} />
               </button>
               <div className="videoMeta"><span>Rutina real de skincare</span><span>{heroVideoPlaying ? "EN VIVO" : "TOCA PLAY"}</span></div>
             </div>
             <div className="phoneBar" />
           </div>
-          <div className="resultCard"><span className="resultIcon">↗</span><p><strong>+84%</strong><br />más respuestas de marcas</p></div>
+          <div className="resultCard"><span className="resultIcon"><Icon glyph="↗" /></span><p><strong>+84%</strong><br />más respuestas de marcas</p></div>
         </div>
       </section>
 
       <section className="marquee" aria-label="Tipos de creadores">
         <div className="marqueeTrack">
-          <span className="marqueeGroup">BEAUTY <i>✦</i> LIFESTYLE <i>✦</i> FOOD <i>✦</i> TRAVEL <i>✦</i> FITNESS <i>✦</i> FASHION <i>✦</i></span>
-          <span className="marqueeGroup" aria-hidden="true">BEAUTY <i>✦</i> LIFESTYLE <i>✦</i> FOOD <i>✦</i> TRAVEL <i>✦</i> FITNESS <i>✦</i> FASHION <i>✦</i></span>
+          <span className="marqueeGroup">BEAUTY <i><Icon glyph="✦" /></i> LIFESTYLE <i><Icon glyph="✦" /></i> FOOD <i><Icon glyph="✦" /></i> TRAVEL <i><Icon glyph="✦" /></i> FITNESS <i><Icon glyph="✦" /></i> FASHION <i><Icon glyph="✦" /></i></span>
+          <span className="marqueeGroup" aria-hidden="true">BEAUTY <i><Icon glyph="✦" /></i> LIFESTYLE <i><Icon glyph="✦" /></i> FOOD <i><Icon glyph="✦" /></i> TRAVEL <i><Icon glyph="✦" /></i> FITNESS <i><Icon glyph="✦" /></i> FASHION <i><Icon glyph="✦" /></i></span>
         </div>
       </section>
 
       <section className="benefits shell" id="como-funciona">
         <div className="sectionIntro"><span className="kicker">Todo en un solo lugar</span><h2>Tu talento al frente.<br /><em>La parte difícil, resuelta.</em></h2></div>
         <div className="benefitGrid competitiveGrid">
-          {benefits.map((item, index) => <article className="benefit" key={item.title}><span className={`benefitIcon tone${index}`}>{item.icon}</span><h3>{item.title}</h3><p>{item.text}</p><span className="stepNumber">0{index + 1}</span></article>)}
+          {benefits.map((item, index) => <article className="benefit" key={item.title}><span className={`benefitIcon tone${index}`}><Icon glyph={item.icon} /></span><h3>{item.title}</h3><p>{item.text}</p><span className="stepNumber">0{index + 1}</span></article>)}
         </div>
       </section>
 
@@ -120,8 +124,8 @@ export default function Home() {
         <div className="shell comparisonWrap">
           <div className="comparisonIntro"><span className="kicker light">Brilla vs. Canva</span><h2>Canva te da un lienzo.<br /><em>Brilla te da el portafolio.</em></h2><p>Todo lo que una creadora UGC necesita para presentarse, actualizarse y cerrar campañas, sin tener que aprender a diseñar.</p></div>
           <div className="comparisonTable" role="table" aria-label="Comparación entre Canva gratis y Brilla gratis">
-            <div className="comparisonHead" role="row"><strong>Función</strong><span>Canva gratis</span><b>Brilla gratis ✦</b></div>
-            {comparison.map(([feature, canva, brilla]) => <div className="comparisonRow" role="row" key={feature}><strong>{feature}</strong><span><i>—</i>{canva}</span><b><i>✓</i>{brilla}</b></div>)}
+            <div className="comparisonHead" role="row"><strong>Función</strong><span>Canva gratis</span><b>Brilla gratis <Icon glyph="✦" /></b></div>
+            {comparison.map(([feature, canva, brilla]) => <div className="comparisonRow" role="row" key={feature}><strong>{feature}</strong><span><i>—</i>{canva}</span><b><i><Icon glyph="✓" /></i>{brilla}</b></div>)}
           </div>
         </div>
       </section>
@@ -129,9 +133,9 @@ export default function Home() {
       <section className="portfolioSection shell" id="portafolios">
         <div className="portfolioHeader"><div><span className="kicker">Diseñado para destacar</span><h2>Portafolios con<br /><em>personalidad.</em></h2></div><p>Empieza con una plantilla y hazla tuya. Cada diseño está pensado para verse impecable en móvil y computador.</p></div>
         <div className="templateGrid">
-          <article className="template templateCoral"><div className="templateNav"><b>SOFÍA</b><span>WORK · ABOUT · CONTACT</span></div><div className="templateBody"><p>BEAUTY CREATOR</p><h3>Stories that<br />feel <i>real.</i></h3><div className="miniPhone" aria-label="Vista previa de Reel de skincare"><div className="miniReel scenePink"><span>SKINCARE</span><strong>Rutina glow<br />en 3 pasos</strong><i>▶</i><small>0:24 · REEL</small></div></div></div><span className="templateName">Editorial</span></article>
-          <article className="template templateLime"><div className="templateNav"><b>MARA.</b><span>UGC / COLOMBIA</span></div><div className="templateBody"><p>LIFESTYLE + TRAVEL</p><h3>Creo contenido<br /><i>que conecta.</i></h3><div className="miniGallery" aria-label="Vista previa de galería UGC"><span><small>01</small><b>Unboxing</b><i>▶</i></span><span><small>02</small><b>Review</b><i>▶</i></span><span><small>03</small><b>Travel</b><i>▶</i></span></div></div><span className="templateName">Fresh</span></article>
-          <article className="template templateInk"><div className="templateNav"><b>LUNA—UGC</b><span>01 02 03</span></div><div className="templateBody"><p>FOOD · FASHION · BEAUTY</p><h3>Ideas que<br /><i>se sienten.</i></h3><div className="miniPhone" aria-label="Vista previa de Reel gastronómico"><div className="miniReel sceneDark"><span>FOOD STORY</span><strong>Probando<br />lo nuevo</strong><i>▶</i><small>0:18 · REEL</small></div></div></div><span className="templateName">Noir</span></article>
+          <article className="template templateCoral"><div className="templateNav"><b>SOFÍA</b><span>WORK · ABOUT · CONTACT</span></div><div className="templateBody"><p>BEAUTY CREATOR</p><h3>Stories that<br />feel <i>real.</i></h3><div className="miniPhone" aria-label="Vista previa de Reel de skincare"><div className="miniReel scenePink"><span>SKINCARE</span><strong>Rutina glow<br />en 3 pasos</strong><i><Icon glyph="▶" /></i><small>0:24 · REEL</small></div></div></div><span className="templateName">Editorial</span></article>
+          <article className="template templateLime"><div className="templateNav"><b>MARA.</b><span>UGC / COLOMBIA</span></div><div className="templateBody"><p>LIFESTYLE + TRAVEL</p><h3>Creo contenido<br /><i>que conecta.</i></h3><div className="miniGallery" aria-label="Vista previa de galería UGC"><span><small>01</small><b>Unboxing</b><i><Icon glyph="▶" /></i></span><span><small>02</small><b>Review</b><i><Icon glyph="▶" /></i></span><span><small>03</small><b>Travel</b><i><Icon glyph="▶" /></i></span></div></div><span className="templateName">Fresh</span></article>
+          <article className="template templateInk"><div className="templateNav"><b>LUNA—UGC</b><span>01 02 03</span></div><div className="templateBody"><p>FOOD · FASHION · BEAUTY</p><h3>Ideas que<br /><i>se sienten.</i></h3><div className="miniPhone" aria-label="Vista previa de Reel gastronómico"><div className="miniReel sceneDark"><span>FOOD STORY</span><strong>Probando<br />lo nuevo</strong><i><Icon glyph="▶" /></i><small>0:18 · REEL</small></div></div></div><span className="templateName">Noir</span></article>
         </div>
       </section>
 
@@ -146,14 +150,14 @@ export default function Home() {
         <div className="pricingCopy"><span className="kicker">Gratis de verdad</span><h2>Tu talento ya cuesta.<br /><em>Tu portafolio no.</em></h2><p>Sin tarjeta, sin prueba de 7 días y sin esconder lo importante detrás de un pago.</p></div>
         <div className="freeCard">
           <div><span className="plan">BRILLA GRATIS</span><div className="price"><strong>$0</strong><span>para siempre</span></div></div>
-          <ul><li><span>✓</span><strong>Web responsiva</strong><small>con enlace para compartir</small></li><li><span>✓</span><strong>Contenido completo</strong><small>videos, fotos y tarifas</small></li><li><span>✓</span><strong>Métricas y alertas</strong><small>de cada visualización</small></li><li><span>✓</span><strong>Enlace profesional</strong><small>fácil de compartir y actualizar</small></li><li><span>✓</span><strong>Media kit PDF</strong><small>listo en un clic</small></li></ul>
-          <a href="/crear">Crear mi portafolio <span>↗</span></a>
+          <ul><li><span><Icon glyph="✓" /></span><strong>Web responsiva</strong><small>con enlace para compartir</small></li><li><span><Icon glyph="✓" /></span><strong>Contenido completo</strong><small>videos, fotos y tarifas</small></li><li><span><Icon glyph="✓" /></span><strong>Métricas y alertas</strong><small>de cada visualización</small></li><li><span><Icon glyph="✓" /></span><strong>Enlace profesional</strong><small>fácil de compartir y actualizar</small></li><li><span><Icon glyph="✓" /></span><strong>Media kit PDF</strong><small>listo en un clic</small></li></ul>
+          <a href="/crear">Crear mi portafolio <span><Icon glyph="↗" /></span></a>
         </div>
       </section>
 
-      <section className="faq shell"><div><span className="kicker">Preguntas frecuentes</span><h2>Lo que necesitas<br /><em>saber.</em></h2></div><div className="faqList">{faqs.map(([question, answer], index) => <article className={openFaq === index ? "open" : ""} key={question}><button onClick={() => setOpenFaq(openFaq === index ? -1 : index)} aria-expanded={openFaq === index}><span>{question}</span><b>{openFaq === index ? "−" : "+"}</b></button>{openFaq === index && <p>{answer}</p>}</article>)}</div></section>
+      <section className="faq shell"><div><span className="kicker">Preguntas frecuentes</span><h2>Lo que necesitas<br /><em>saber.</em></h2></div><div className="faqList">{faqs.map(([question, answer], index) => <article className={openFaq === index ? "open" : ""} key={question}><button onClick={() => setOpenFaq(openFaq === index ? -1 : index)} aria-expanded={openFaq === index}><span>{question}</span><b><Icon glyph={openFaq === index ? "−" : "+"} /></b></button>{openFaq === index && <p>{answer}</p>}</article>)}</div></section>
 
-      <section className="finalCta shell"><span className="ctaSpark">✦</span><p>NO ESPERES A SENTIRTE LISTA</p><h2>Tu próxima colaboración<br />empieza con un <em>link.</em></h2><a className="primaryButton lightButton" href="/crear">Crear mi portafolio <span>↗</span></a></section>
+      <section className="finalCta shell"><span className="ctaSpark"><Icon glyph="✦" /></span><p>NO ESPERES A SENTIRTE LISTA</p><h2>Tu próxima colaboración<br />empieza con un <em>link.</em></h2><a className="primaryButton lightButton" href="/crear">Crear mi portafolio <span><Icon glyph="↗" /></span></a></section>
 
       <footer className="footer shell"><a className="brand" href="#inicio">brilla<span>•</span></a><p>Portafolios que hacen brillar tu talento.</p><div><a href="#como-funciona">Cómo funciona</a><a href="#comparativa">Brilla vs. Canva</a><a href="#portafolios">Plantillas</a><a href="/privacidad">Política de datos</a><a href="/terminos">Términos</a></div><small>© 2026 TECNOLOGYC S.A.S.</small></footer>
     </main>

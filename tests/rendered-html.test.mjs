@@ -189,7 +189,7 @@ test("keeps Google auth and durable portfolio storage wired safely", async () =>
   assert.match(editor, /signInWithOAuth/);
   assert.match(editor, /provider:\s*"google"/);
   assert.match(editor, /from\("creator_portfolios"\)/);
-  assert.match(editor, /from\("creator_portfolios"\)\.insert\(/);
+  assert.match(editor, /from\("creator_portfolios"\)\s*\.insert\(/);
   assert.match(editor, /from\("creator_portfolios"\)\.update\(/);
   assert.doesNotMatch(editor, /from\("creator_portfolios"\)\.upsert\(/);
   assert.match(editor, /draftUploadPendingKey/);
@@ -393,8 +393,8 @@ test("publishes real slug routes without exposing private portfolio data", async
   ]);
 
   assert.match(editor, /rpc\("is_portfolio_slug_available"/);
-  assert.match(editor, /status:\s*"published"/);
-  assert.match(editor, /status:\s*"unpublished"/);
+  assert.match(editor, /savePortfolio\(data, "published"\)/);
+  assert.match(editor, /savePortfolio\(data, "unpublished"\)/);
   assert.match(editor, /window\.location\.origin\}\/\$\{data\.portfolioSlug\}/);
   assert.match(editor, /Ver publicado/);
   assert.match(editor, /Despublicar/);

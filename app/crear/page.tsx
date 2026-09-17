@@ -1,11 +1,14 @@
 "use client";
 
+import { Icon } from "../components/brilla-icon";
+
+
 /* The editor intentionally uses plain anchors for navigation outside the form. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 /* User media uses local blob URLs and private signed URLs, so Next image optimization is not applicable here. */
 /* eslint-disable @next/next/no-img-element */
 
-import { ChangeEvent, CSSProperties, PointerEvent, UIEvent, WheelEvent, useEffect, useRef, useState } from "react";
+import { useCallback, ChangeEvent, CSSProperties, PointerEvent, UIEvent, WheelEvent, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { Upload } from "tus-js-client";
 import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
@@ -17,6 +20,7 @@ import {
   recordCurrentLegalConsent,
   resolveCurrentLegalConsent,
 } from "../lib/legal-consent";
+import { chooseDraft, createSaveQueue, portfolioAssetDatabase, readDraft, writeDraft, type DraftCopy } from "../lib/portfolio-storage";
 import { getSupabaseBrowserClient } from "../lib/supabase";
 import {
   CampaignStoriesPortfolio,
@@ -51,7 +55,7 @@ export type TemplateSchema = { id: string; format: "website" | "presentation"; c
 type StoredAsset = { id: number; kind: "media" | "brand"; name: string; blob: Blob; revision?: string; type?: "video" | "image"; framed?: boolean; category?: string; instagram?: string; tiktok?: string; storagePath?: string; previewBlob?: Blob; previewPath?: string };
 type RemoteAsset = { asset_id: number; kind: "media" | "brand"; storage_path: string; preview_path: string | null; original_name: string; media_type: "video" | "image"; category: string; framed: boolean; instagram: string; tiktok: string; sort_order: number; size_bytes: number; mime_type: string };
 
-const assetDbName = "brilla-assets-v1";
+
 const assetStoreName = "assets";
 const draftStorageKey = "brilla-portfolio-draft-v3";
 const pendingStepStorageKey = "brilla-post-auth-step-v1";
@@ -84,11 +88,11 @@ function authRedirectOrigin() {
   }
   return window.location.origin;
 }
-function assetDb() { return new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open(assetDbName, 1); request.onupgradeneeded = () => request.result.createObjectStore(assetStoreName, { keyPath: ["kind", "id"] }); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
-async function storeAsset(asset: StoredAsset) { const db = await assetDb(); const transaction = db.transaction(assetStoreName, "readwrite"); transaction.objectStore(assetStoreName).put(asset); await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); db.close(); }
-async function deleteAsset(kind: "media" | "brand", id: number) { const db = await assetDb(); const transaction = db.transaction(assetStoreName, "readwrite"); transaction.objectStore(assetStoreName).delete([kind, id]); await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); db.close(); }
-async function readAssets() { const db = await assetDb(); const transaction = db.transaction(assetStoreName, "readonly"); const request = transaction.objectStore(assetStoreName).getAll(); const assets = await new Promise<StoredAsset[]>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); db.close(); return assets; }
-async function updateStoredAsset(kind: "media" | "brand", id: number, changes: Partial<StoredAsset>) { const db = await assetDb(); const transaction = db.transaction(assetStoreName, "readwrite"); const store = transaction.objectStore(assetStoreName); const request = store.get([kind, id]); const current = await new Promise<StoredAsset | undefined>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); if (current) store.put({ ...current, ...changes, kind, id }); await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); db.close(); }
+function assetDb(owner: string | null) { return new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open(portfolioAssetDatabase(owner), 1); request.onupgradeneeded = () => request.result.createObjectStore(assetStoreName, { keyPath: ["kind", "id"] }); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
+async function storeAssetFor(owner: string | null, asset: StoredAsset) { const db = await assetDb(owner); const transaction = db.transaction(assetStoreName, "readwrite"); transaction.objectStore(assetStoreName).put(asset); await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); db.close(); }
+async function deleteAssetFor(owner: string | null, kind: "media" | "brand", id: number) { const db = await assetDb(owner); const transaction = db.transaction(assetStoreName, "readwrite"); transaction.objectStore(assetStoreName).delete([kind, id]); await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); db.close(); }
+async function readAssetsFor(owner: string | null) { const db = await assetDb(owner); const transaction = db.transaction(assetStoreName, "readonly"); const request = transaction.objectStore(assetStoreName).getAll(); const assets = await new Promise<StoredAsset[]>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); db.close(); return assets; }
+async function updateStoredAssetFor(owner: string | null, kind: "media" | "brand", id: number, changes: Partial<StoredAsset>) { const db = await assetDb(owner); const transaction = db.transaction(assetStoreName, "readwrite"); const store = transaction.objectStore(assetStoreName); const request = store.get([kind, id]); const current = await new Promise<StoredAsset | undefined>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); if (current) store.put({ ...current, ...changes, kind, id }); await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); }); db.close(); }
 
 function validateAssetFile(file: Pick<File, "name" | "type" | "size">, kind: "media" | "brand") {
   const image = imageMimeTypes.has(file.type);
@@ -415,6 +419,15 @@ function PortfolioEditor() {
   const [assetProcessing, setAssetProcessing] = useState(0);
   const [assetError, setAssetError] = useState("");
   const [assetRetryNonce, setAssetRetryNonce] = useState(0);
+  const [loadRetry, setLoadRetry] = useState(0);
+  const [recoveryDraft, setRecoveryDraft] = useState<DraftCopy<Portfolio> | null>(null);
+  const revisionRef = useRef<string | null>(null);
+  const syncedContentRef = useRef("");
+  const enqueueSave = useRef(createSaveQueue());
+  const readAssets = () => readAssetsFor(user?.id ?? null);
+  const storeAsset = (asset: StoredAsset) => storeAssetFor(user?.id ?? null, asset);
+  const deleteAsset = useCallback((kind: "media" | "brand", id: number) => deleteAssetFor(user?.id ?? null, kind, id), [user?.id]);
+  const updateStoredAsset = useCallback((kind: "media" | "brand", id: number, changes: Partial<StoredAsset>) => updateStoredAssetFor(user?.id ?? null, kind, id, changes), [user?.id]);
   const previewRef = useRef<HTMLElement>(null);
   const mobileStepNavRef = useRef<HTMLElement>(null);
   const dataRef = useRef(data);
@@ -456,24 +469,30 @@ function PortfolioEditor() {
   }, [step, data.format, data.webTemplate, data.template]);
 
   useEffect(() => {
-    const draft = window.localStorage.getItem(draftStorageKey);
+    if (checkingAuth) return;
+    let active = true;
     const timer = window.setTimeout(() => {
-      if (draft) {
-        try {
-          const restored = restorePortfolio(JSON.parse(draft));
+      // Signed-in content is restored only after the server has been read.
+      if (!user) {
+        const draft = readDraft<Portfolio>(window.localStorage, null);
+        if (draft) {
+          const restored = restorePortfolio(draft.content);
           dataRef.current = restored;
           setData(restored);
-        } catch { /* keep defaults */ }
+        }
       }
       setLocalDraftReady(true);
       readAssets().then((assets) => {
+        if (!active) return;
         localAssetsRef.current = assets;
         setMedia(assets.filter((asset) => asset.kind === "media").map((asset) => ({ id: asset.id, name: asset.name, type: asset.type ?? "image", url: URL.createObjectURL(asset.blob), framed: asset.framed ?? false, category: asset.category ?? categories[0], instagram: asset.instagram ?? "", tiktok: asset.tiktok ?? "", storagePath: asset.storagePath, previewUrl: asset.previewBlob ? URL.createObjectURL(asset.previewBlob) : undefined, previewPath: asset.previewPath })));
         setBrands(assets.filter((asset) => asset.kind === "brand").map((asset) => ({ id: asset.id, name: asset.name, url: URL.createObjectURL(asset.blob), storagePath: asset.storagePath })));
-      }).catch(() => { /* IndexedDB may be unavailable in private browsing */ }).finally(() => setLocalAssetsReady(true));
+      }).catch(() => { /* Cloud files remain available when IndexedDB is unavailable. */ }).finally(() => { if (active) setLocalAssetsReady(true); });
     }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
+    return () => { active = false; window.clearTimeout(timer); };
+    // Account changes reload the editor; token refreshes must not reload local data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkingAuth, user?.id]);
   useEffect(() => { dataRef.current = data; }, [data]);
   useEffect(() => {
     const mobile = window.matchMedia("(max-width: 680px)");
@@ -498,144 +517,186 @@ function PortfolioEditor() {
     nav.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
-  useEffect(() => { const timer = window.setTimeout(() => { window.localStorage.setItem(draftStorageKey, JSON.stringify(data)); setSaved(true); }, 450); return () => window.clearTimeout(timer); }, [data]);
+  useEffect(() => {
+    if (!localDraftReady || checkingAuth || (user && !cloudReady) || recoveryDraft) return;
+    const persist = () => {
+      const ok = writeDraft(window.localStorage, user?.id ?? null, {
+        content: dataRef.current,
+        baseUpdatedAt: revisionRef.current,
+        dirty: JSON.stringify(dataRef.current) !== syncedContentRef.current,
+      });
+      setSaved(ok);
+      if (!ok) setCloudError("El navegador no permite guardar una copia local. Mantén esta página abierta hasta sincronizar.");
+    };
+    persist();
+    window.addEventListener("pagehide", persist);
+    return () => { window.removeEventListener("pagehide", persist); };
+  }, [data, user, checkingAuth, localDraftReady, cloudReady, recoveryDraft]);
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     let active = true;
+    let acceptedId: string | null | undefined;
     const acceptUser = async (nextUser: User | null) => {
       if (!active) return;
+      const nextId = nextUser?.id ?? null;
+      if (acceptedId === nextId) return;
+      if (acceptedId !== undefined) {
+        // Drop all in-memory state when the identity changes, including in another tab.
+        window.location.reload();
+        return;
+      }
+      acceptedId = nextId;
       setUser(nextUser);
-      if (!nextUser) {
+      if (!nextUser) { window.clearTimeout(timer); setCheckingAuth(false); return; }
+      try {
+        const consent = await resolveCurrentLegalConsent(supabase, nextUser.id);
+        if (!active) return;
+        window.clearTimeout(timer);
         setCheckingAuth(false);
-        setLegalReady(false);
-        setLegalConsentRequired(false);
-        setCloudReady(false);
-        setCloudSaveState("local");
-        assetHydratedForRef.current = "";
-        return;
-      }
-
-      const consent = await resolveCurrentLegalConsent(supabase, nextUser.id);
-      if (!active) return;
-      setCheckingAuth(false);
-      if (!consent.accepted) {
-        setLegalReady(false);
-        setLegalConsentRequired(true);
-        setLegalError(consent.error ? "No pudimos comprobar tu autorización. Revisa tu conexión e inténtalo nuevamente." : "");
-        setCloudReady(false);
+        setAuthError("");
+        if (!consent.accepted) {
+          setLegalConsentRequired(true);
+          setLegalError(consent.error ? "No pudimos comprobar tu autorización. Revisa tu conexión e inténtalo nuevamente." : "");
+          return;
+        }
+        setLegalReady(true);
+        const pendingStep = Number(window.localStorage.getItem(pendingStepStorageKey));
+        if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) { setStep(pendingStep); setMaxVisitedStep(pendingStep); }
+        window.localStorage.removeItem(pendingStepStorageKey);
         setAuthPromptOpen(false);
-        return;
+      } catch {
+        if (active) { setCheckingAuth(false); setAuthError("No pudimos comprobar tu cuenta. Reintenta la conexión."); }
       }
-
-      setLegalReady(true);
-      setLegalConsentRequired(false);
-      setLegalError("");
-      const pendingStep = Number(window.localStorage.getItem(pendingStepStorageKey));
-      if (Number.isInteger(pendingStep) && pendingStep >= 2 && pendingStep < steps.length) { setStep(pendingStep); setMaxVisitedStep((current) => Math.max(current, pendingStep)); }
-      window.localStorage.removeItem(pendingStepStorageKey);
-      setAuthPromptOpen(false);
     };
-    void supabase.auth.getUser().then(({ data: authData }) => { void acceptUser(authData.user ?? null); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => { void acceptUser(session?.user ?? null); });
-    return () => { active = false; listener.subscription.unsubscribe(); };
+    const timer = window.setTimeout(() => {
+      if (active) { setCheckingAuth(false); setAuthError("La conexión tardó demasiado. Reintenta antes de editar."); }
+    }, 15000);
+    // Defer Supabase work outside its auth callback/lock. Deduplicate INITIAL_SESSION and getSession.
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => { if (active) void acceptUser(session?.user ?? null); }, 0);
+    });
+    void supabase.auth.getSession().then(({ data: sessionData, error }) => {
+      if (error) throw error;
+      return acceptUser(sessionData.session?.user ?? null);
+    }).catch(() => { if (active) { setCheckingAuth(false); setAuthError("No pudimos comprobar tu cuenta. Reintenta la conexión."); } });
+    return () => { active = false; window.clearTimeout(timer); listener.subscription.unsubscribe(); };
   }, []);
   useEffect(() => {
     if (!user || !legalReady || !localDraftReady) return;
     let active = true;
     const hydratePortfolio = async () => {
+      setCloudReady(false);
       setCloudSaveState("loading");
       setCloudError("");
       const supabase = getSupabaseBrowserClient();
-      const [portfolioResult, analyticsResult, preferencesResult] = await Promise.all([
-        supabase
-          .from("creator_portfolios")
-          .select("content,status")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-        supabase.rpc("get_my_portfolio_analytics"),
-        supabase
-          .from("creator_notification_preferences")
-          .select("email_digest_enabled")
-          .eq("user_id", user.id)
-          .maybeSingle(),
-      ]);
-      const { data: stored, error } = portfolioResult;
-
-      if (!active) return;
-      if (error) {
-        setCloudSaveState("error");
-        setCloudError("No pudimos recuperar tu portafolio. El borrador sigue seguro en este dispositivo.");
-        return;
-      }
-
-      const localMustWin = window.localStorage.getItem(draftUploadPendingKey) === "1";
-      const remoteContent = stored?.content;
-      const hasRemoteContent = Boolean(remoteContent) && typeof remoteContent === "object" && !Array.isArray(remoteContent) && Object.keys(remoteContent as object).length > 0;
-      const notificationEnabled = preferencesResult.data?.email_digest_enabled === true;
-      setNotificationPreferenceExists(Boolean(preferencesResult.data));
-      if (!analyticsResult.error && analyticsResult.data && typeof analyticsResult.data === "object") {
-        setViews(Number((analyticsResult.data as { total_views?: unknown }).total_views) || 0);
-      }
-
-      if (hasRemoteContent && !localMustWin) {
-        const restored = { ...restorePortfolio(remoteContent), notifyViews: notificationEnabled };
+      try {
+        const { data: stored, error } = await supabase.from("creator_portfolios")
+          .select("content,status,slug,updated_at").eq("user_id", user.id)
+          .abortSignal(AbortSignal.timeout(15000)).maybeSingle();
+        if (!active) return;
+        if (error) throw error;
+        const local = readDraft<Portfolio>(window.localStorage, user.id);
+        let restored: Portfolio;
+        if (stored) {
+          const remote = { ...restorePortfolio(stored.content), portfolioSlug: stored.slug ?? "" };
+          const choice = chooseDraft(remote, stored.updated_at, local);
+          restored = restorePortfolio(choice.content);
+          setRecoveryDraft(choice.conflict);
+          revisionRef.current = stored.updated_at;
+          syncedContentRef.current = JSON.stringify(remote);
+          setPublicationStatus(stored.status === "published" && restored.portfolioSlug !== stored.slug ? "draft" : stored.status);
+          setMaxVisitedStep(steps.length - 1);
+          // Old unowned copies are retained for explicit recovery, never uploaded automatically.
+          if (!local) {
+            try {
+              const legacy = JSON.parse(window.localStorage.getItem(draftStorageKey) ?? "null");
+              const guest = readDraft<Portfolio>(window.localStorage, null)?.content;
+              const candidate = guest?.name || guest?.bio ? guest : legacy;
+              if (candidate && (candidate.name || candidate.bio) && JSON.stringify(restorePortfolio(candidate)) !== JSON.stringify(remote)) {
+                setRecoveryDraft({ content: restorePortfolio(candidate), baseUpdatedAt: null, dirty: true });
+              }
+            } catch { /* An invalid legacy copy cannot replace the remote portfolio. */ }
+          }
+        } else {
+          // Only an explicitly staged guest draft may initialize a new account.
+          const staged = window.localStorage.getItem(draftUploadPendingKey) === "v4";
+          restored = restorePortfolio(local?.content ?? (staged ? readDraft<Portfolio>(window.localStorage, null)?.content : null));
+          const { data: created, error: createError } = await supabase.from("creator_portfolios")
+            .insert({ user_id: user.id, content: restored, status: "draft", slug: restored.portfolioSlug || null })
+            .select("updated_at").single();
+          if (!active) return;
+          if (createError || !created) throw createError ?? new Error("No se confirmó el guardado");
+          revisionRef.current = created.updated_at;
+          syncedContentRef.current = JSON.stringify(restored);
+          if (staged) window.localStorage.setItem(draftUploadPendingKey, `v4:${user.id}`);
+        }
+        // A failed local transfer can be retried only by the account that claimed it.
+        if (window.localStorage.getItem(draftUploadPendingKey) === `v4:${user.id}`) {
+          const guestAssets = await readAssetsFor(null);
+          await Promise.all(guestAssets.map((asset) => storeAssetFor(user.id, { ...asset, storagePath: undefined, previewPath: undefined })));
+          if (!active) return;
+          window.localStorage.removeItem(draftUploadPendingKey);
+          if (guestAssets.length) { window.location.reload(); return; }
+        }
+        if (!active) return;
         dataRef.current = restored;
         setData(restored);
-        setPublicationStatus(stored?.status === "published" ? "published" : stored?.status === "unpublished" ? "unpublished" : "draft");
-        window.localStorage.setItem(draftStorageKey, JSON.stringify(restored));
-      } else {
-        const localDraft = { ...dataRef.current, notifyViews: notificationEnabled };
-        dataRef.current = localDraft;
-        setData(localDraft);
-        const draftPayload = {
-          content: localDraft,
-          status: stored?.status === "published" ? "published" : stored?.status === "unpublished" ? "unpublished" : "draft",
-          slug: localDraft.portfolioSlug || null,
-        };
-        const { error: uploadError } = stored
-          ? await supabase.from("creator_portfolios").update(draftPayload).eq("user_id", user.id)
-          : await supabase.from("creator_portfolios").insert({ user_id: user.id, ...draftPayload });
-        if (!active) return;
-        if (uploadError) {
-          setCloudSaveState("error");
-          setCloudError("No pudimos subir el borrador. Sigue guardado en este dispositivo.");
-          return;
-        }
         window.localStorage.removeItem(draftUploadPendingKey);
+        setCloudReady(true);
+        setCloudSaveState(JSON.stringify(restored) === syncedContentRef.current ? "saved" : "loading");
+        // Metrics/preferences must not block portfolio recovery.
+        void supabase.rpc("get_my_portfolio_analytics").then(({ data: analytics }) => {
+          if (active && analytics) setViews(Number((analytics as { total_views?: unknown }).total_views) || 0);
+        });
+        void supabase.from("creator_notification_preferences").select("email_digest_enabled").eq("user_id", user.id).maybeSingle().then(({ data: preferences, error: preferenceError }) => {
+          if (!active || preferenceError) return;
+          setNotificationPreferenceExists(Boolean(preferences));
+          setData((current) => ({ ...current, notifyViews: preferences?.email_digest_enabled === true }));
+        });
+      } catch {
+        if (active) {
+          setCloudSaveState("error");
+          setCloudError("No pudimos recuperar tu portafolio. No se ha reemplazado ningún dato. Reintenta la carga.");
+        }
       }
-
-      setCloudReady(true);
-      setCloudSaveState("saved");
     };
-
     void hydratePortfolio();
     return () => { active = false; };
-  }, [user, legalReady, localDraftReady]);
+  }, [user, legalReady, localDraftReady, loadRetry]);
+
+  const savePortfolio = (content: Portfolio, status: typeof publicationStatus) => enqueueSave.current(async () => {
+    if (!user || !revisionRef.current) throw new Error("Primero debemos recuperar tu portafolio.");
+    const supabase = getSupabaseBrowserClient();
+    const { data: stored, error } = await supabase.from("creator_portfolios").update({
+      content, status, slug: content.portfolioSlug || null,
+    }).eq("user_id", user.id).eq("updated_at", revisionRef.current).select("updated_at").maybeSingle();
+    if (error) throw new Error("No pudimos sincronizar. Conservamos tus cambios en este dispositivo; reintenta el guardado.");
+    if (!stored) throw new Error("El portafolio cambió en otra pestaña o dispositivo. Recarga para revisar ambas versiones.");
+    revisionRef.current = stored.updated_at;
+    syncedContentRef.current = JSON.stringify(content);
+    if (!recoveryDraft) writeDraft(window.localStorage, user.id, {
+      content: dataRef.current, baseUpdatedAt: stored.updated_at,
+      dirty: JSON.stringify(dataRef.current) !== syncedContentRef.current,
+    });
+    if (content.name.trim()) void supabase.from("creator_profiles").update({ display_name: content.name.trim().slice(0, 100) }).eq("id", user.id).then(() => {});
+  });
   useEffect(() => {
-    if (!user || !cloudReady) return;
+    if (!user || !cloudReady || publishBusy || JSON.stringify(data) === syncedContentRef.current) return;
+    let active = true;
     const timer = window.setTimeout(async () => {
       setCloudSaveState("loading");
       setCloudError("");
-      const supabase = getSupabaseBrowserClient();
-      const [{ error: portfolioError }, { error: profileError }] = await Promise.all([
-        supabase.from("creator_portfolios").update({
-          content: data,
-          status: publicationStatus,
-          slug: data.portfolioSlug || null,
-        }).eq("user_id", user.id),
-        data.name.trim()
-          ? supabase.from("creator_profiles").update({ display_name: data.name.trim().slice(0, 100) }).eq("id", user.id)
-          : Promise.resolve({ error: null }),
-      ]);
-      if (portfolioError || profileError) {
-        setCloudSaveState("error");
-        setCloudError("No pudimos sincronizar los últimos cambios. El borrador local sigue disponible.");
-        return;
+      try {
+        await savePortfolio(data, publicationStatus);
+        if (active) setCloudSaveState("saved");
+      } catch (error) {
+        if (active) { setCloudSaveState("error"); setCloudError(error instanceof Error ? error.message : "No pudimos guardar los cambios."); }
       }
-      setCloudSaveState("saved");
     }, 850);
-    return () => window.clearTimeout(timer);
-  }, [data, publicationStatus, user, cloudReady]);
+    return () => { active = false; window.clearTimeout(timer); };
+    // savePortfolio reads the latest revision through refs and serializes all writes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, publicationStatus, user, cloudReady, publishBusy]);
 
   useEffect(() => {
     const slug = data.portfolioSlug;
@@ -670,6 +731,7 @@ function PortfolioEditor() {
       const { error: readError } = await supabase
         .from("creator_media")
         .select("asset_id,kind,storage_path,preview_path,original_name,media_type,category,framed,instagram,tiktok,sort_order,size_bytes,mime_type")
+        .eq("user_id", user.id)
         .order("sort_order", { ascending: true });
 
       if (!active) return;
@@ -710,6 +772,7 @@ function PortfolioEditor() {
       const { data: refreshedRows, error: refreshError } = await supabase
         .from("creator_media")
         .select("asset_id,kind,storage_path,preview_path,original_name,media_type,category,framed,instagram,tiktok,sort_order,size_bytes,mime_type")
+        .eq("user_id", user.id)
         .order("sort_order", { ascending: true });
       if (!active) return;
       if (refreshError) {
@@ -770,7 +833,7 @@ function PortfolioEditor() {
       active = false;
       if (assetHydratedForRef.current === user.id) assetHydratedForRef.current = "";
     };
-  }, [user, cloudReady, localAssetsReady, assetRetryNonce]);
+  }, [user, cloudReady, localAssetsReady, assetRetryNonce, deleteAsset, updateStoredAsset]);
 
   const update = (field: keyof Portfolio, value: string | string[]) => { setSaved(false); setData((current) => ({ ...current, [field]: value })); };
   const updateCaseStudy = (field: keyof CaseStudy, value: string) => {
@@ -999,13 +1062,11 @@ function PortfolioEditor() {
       setPublishBusy(false);
       return;
     }
-    const previousStatus = publicationStatus;
-    setPublicationStatus("published");
-    const { error } = await supabase.from("creator_portfolios").update({ content: data, status: "published", slug: data.portfolioSlug }).eq("user_id", user.id);
-    if (error) {
-      setPublicationStatus(previousStatus);
-      setPublishError(error.code === "23505" ? "Ese enlace acaba de ser elegido. Prueba una variación." : "No pudimos publicar todavía. Tu trabajo sigue guardado.");
-      if (error.code === "23505") setSlugState("taken");
+    try {
+      await savePortfolio(data, "published");
+      setPublicationStatus("published");
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : "No pudimos publicar todavía.");
       setPublishBusy(false);
       return;
     }
@@ -1018,15 +1079,13 @@ function PortfolioEditor() {
     if (!user || !cloudReady) return;
     setPublishBusy(true);
     setPublishError("");
-    setPublicationStatus("unpublished");
-    const { error } = await getSupabaseBrowserClient().from("creator_portfolios").update({ status: "unpublished" }).eq("user_id", user.id);
-    if (error) {
-      setPublicationStatus("published");
-      setPublishError("No pudimos despublicarlo. Inténtalo nuevamente.");
-    }
-    else {
+    try {
+      await savePortfolio(data, "unpublished");
+      setPublicationStatus("unpublished");
       setCloudSaveState("saved");
       window.localStorage.removeItem("brilla-published-v1");
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : "No pudimos despublicarlo. Inténtalo nuevamente.");
     }
     setPublishBusy(false);
   };
@@ -1034,7 +1093,7 @@ function PortfolioEditor() {
     if (nextStep <= 1 || (user && legalReady)) { setStep(nextStep); setMaxVisitedStep((current) => Math.max(current, nextStep)); return; }
     if (user && !legalReady) { setLegalConsentRequired(true); return; }
     if (step < 1) { setStep(1); return; }
-    window.localStorage.setItem(draftStorageKey, JSON.stringify(data));
+    writeDraft(window.localStorage, user?.id ?? null, { content: data, baseUpdatedAt: revisionRef.current, dirty: true });
     window.localStorage.setItem(pendingStepStorageKey, String(nextStep));
     setSaved(true);
     setAuthError("");
@@ -1049,8 +1108,8 @@ function PortfolioEditor() {
     setAuthError("");
     markLegalConsentPending();
     rememberAuthRedirect("/crear");
-    window.localStorage.setItem(draftStorageKey, JSON.stringify(data));
-    window.localStorage.setItem(draftUploadPendingKey, "1");
+    writeDraft(window.localStorage, user?.id ?? null, { content: data, baseUpdatedAt: revisionRef.current, dirty: true });
+    window.localStorage.setItem(draftUploadPendingKey, "v4");
     const supabase = getSupabaseBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -1093,7 +1152,8 @@ function PortfolioEditor() {
     setLegalBusy(false);
   };
   if (user && legalConsentRequired) return <main className="builderApp"><LegalConsentGate checked={authenticatedConsentChecked} busy={legalBusy} error={legalError} onCheckedChange={setAuthenticatedConsentChecked} onAccept={() => void acceptAuthenticatedConsent()} onSignOut={() => void declineAuthenticatedConsent()} /></main>;
-  if (finalView) return <main className="finalDeckMode"><div className="portfolioToolbar"><button onClick={() => setFinalView(false)}>← Editor</button><span>{published ? "↗ Publicado" : "◉ Vista previa"}</span><button onClick={published ? copyLink : () => { setFinalView(false); setStep(6); }}>{published ? copied ? "Copiado ✓" : "Copiar enlace" : "Ir a publicar"}</button><button onClick={() => void downloadPdf()} disabled={pdfBusy}>{pdfBusy ? "Creando PDF…" : "Descargar PDF"}</button></div>{publishError && <p className="publishError finalPdfError" role="alert">{publishError}</p>}{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />}</main>;
+  if (checkingAuth || !localDraftReady || (user && !cloudReady) || (authError && !authPromptOpen)) return <main className="builderApp editorLoading"><a className="builderBrand" href="/">brilla<span>•</span></a><h1>Tu portafolio</h1><p role="status">{cloudError || authError || "Recuperando tu información…"}</p>{(cloudError || authError) && <button type="button" onClick={() => { if (authError) window.location.reload(); else setLoadRetry((value) => value + 1); }}>Reintentar</button>}<a href="/cuenta">Ir a mi cuenta</a></main>;
+  if (finalView) return <main className="finalDeckMode"><div className="portfolioToolbar"><button onClick={() => setFinalView(false)}><Icon glyph="←" /> Editor</button><span>{published ? <><Icon glyph="↗" /> Publicado</> : <><Icon glyph="◉" /> Vista previa</>}</span><button onClick={published ? copyLink : () => { setFinalView(false); setStep(6); }}>{published ? copied ? <>Copiado <Icon glyph="✓" /></> : "Copiar enlace" : "Ir a publicar"}</button><button onClick={() => void downloadPdf()} disabled={pdfBusy}>{pdfBusy ? "Creando PDF…" : "Descargar PDF"}</button></div>{publishError && <p className="publishError finalPdfError" role="alert">{publishError}</p>}{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />}</main>;
 
   const statusLabel = assetProcessing > 0
     ? assetProcessing === 1 ? "Preparando 1 archivo…" : `Preparando ${assetProcessing} archivos…`
@@ -1102,7 +1162,7 @@ function PortfolioEditor() {
     : checkingAuth
     ? "Comprobando cuenta…"
     : user
-      ? cloudSaveState === "saved" ? "Guardado en Brilla" : cloudSaveState === "error" ? "Guardado en este dispositivo" : "Sincronizando…"
+      ? cloudSaveState === "saved" ? "Guardado en Brilla" : cloudSaveState === "error" ? "Pendiente de sincronizar" : "Sincronizando…"
       : saved ? "Guardado en este dispositivo" : "Guardando en este dispositivo…";
   const statusTone = assetProcessing > 0 || assetUploads > 0 || checkingAuth || (user && cloudSaveState === "loading") || (!user && !saved)
     ? "saving"
@@ -1110,41 +1170,43 @@ function PortfolioEditor() {
   const statusHelp = assetError || cloudError || (!checkingAuth && !user ? "Inicia sesión para sincronizar tu progreso con Brilla." : "");
 
   return <main className="builderApp">
-    <header className="builderTopbar"><a className="builderBrand" href="/">brilla<span>•</span></a><div className="builderStatus" title={statusHelp}><i className={statusTone} />{statusLabel}</div><div className="builderTopActions"><a href="/cuenta">{checkingAuth ? "Cuenta" : user ? "Cuenta conectada ✓" : "Iniciar sesión"}</a><button className="previewAction" onClick={() => openPortfolio()}>Ver portafolio ↗</button><button className="mobilePreviewLauncher" type="button" aria-expanded={mobilePreviewOpen} onClick={() => setMobilePreviewOpen(true)}><span aria-hidden="true">◉</span> Vista previa</button></div></header>
+    <header className="builderTopbar"><a className="builderBrand" href="/">brilla<span>•</span></a><div className="builderStatus" title={statusHelp}><i className={statusTone} />{statusLabel}</div><div className="builderTopActions"><a href="/cuenta">{checkingAuth ? "Cuenta" : user ? <>Cuenta conectada <Icon glyph="✓" /></> : "Iniciar sesión"}</a><button className="previewAction" onClick={() => openPortfolio()}>Ver portafolio <Icon glyph="↗" /></button><button className="mobilePreviewLauncher" type="button" aria-expanded={mobilePreviewOpen} onClick={() => setMobilePreviewOpen(true)}><span aria-hidden="true"><Icon glyph="◉" /></span> Vista previa</button></div></header>
     <div className="builderGrid">
-      <aside className="builderSidebar"><p>TU PORTAFOLIO</p><nav aria-label="Secciones del editor">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => requestStep(index)}><span>{index < step ? "✓" : String(index + 1).padStart(2, "0")}</span><div><small>PASO {String(index + 1).padStart(2, "0")}</small><strong>{item[0]}</strong></div></button>)}</nav><div className="sidebarTip"><b>✦</b><p><strong>Todo incluido</strong>Web, video, métricas, alertas y PDF. Siempre gratis.</p></div></aside>
+      <aside className="builderSidebar"><p>TU PORTAFOLIO</p><nav aria-label="Secciones del editor">{steps.map((item, index) => <button key={item[0]} className={index === step ? "current" : index < step ? "done" : ""} onClick={() => requestStep(index)}><span>{index < step ? <Icon glyph="✓" /> : String(index + 1).padStart(2, "0")}</span><div><small>PASO {String(index + 1).padStart(2, "0")}</small><strong>{item[0]}</strong></div></button>)}</nav><div className="sidebarTip"><b><Icon glyph="✦" /></b><p><strong>Todo incluido</strong>Web, video, métricas, alertas y PDF. Siempre gratis.</p></div></aside>
       <section className="builderFormArea">
         <div className="mobileProgress"><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div>
-        <nav ref={mobileStepNavRef} className="mobileStepNav" aria-label="Pasos visitados">{steps.map((item, index) => <button key={item[0]} type="button" className={index === step ? "current" : index < maxVisitedStep ? "visited" : ""} disabled={index > maxVisitedStep} onClick={() => requestStep(index)}><span>{index < maxVisitedStep ? "✓" : index + 1}</span>{item[0]}</button>)}</nav>
+        <nav ref={mobileStepNavRef} className="mobileStepNav" aria-label="Pasos visitados">{steps.map((item, index) => <button key={item[0]} type="button" className={index === step ? "current" : index < maxVisitedStep ? "visited" : ""} disabled={index > maxVisitedStep} onClick={() => requestStep(index)}><span>{index < maxVisitedStep ? <Icon glyph="✓" /> : index + 1}</span>{item[0]}</button>)}</nav>
         <div className="formHeading"><span>{String(step + 1).padStart(2, "0")} / {String(steps.length).padStart(2, "0")}</span><h1>{steps[step][1]}</h1><p>{steps[step][2]}</p></div>
-        {assetError && <div className="assetSyncNotice" role="alert"><span>!</span><p>{assetError}</p>{user && <button className="assetRetryButton" type="button" onClick={retryAssetUploads} disabled={assetUploads > 0}>{assetUploads > 0 ? "Subiendo…" : "Reintentar"}</button>}<button className="assetNoticeClose" type="button" onClick={() => setAssetError("")} aria-label="Cerrar aviso">×</button></div>}
-        {step === 2 && data.format === "website" && data.webTemplate === "stories" && data.portfolioCategories.length > 0 && <div className="formPanel"><div className="schemaSummary"><span>✎</span><p><strong>Historia del caso · {data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}</strong><small>Convierte esta categoría en un caso de campaña. Puedes dejar vacío lo que aún no tengas.</small></p></div><Field label="Marca o cliente" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { client: "" }).client} set={(v) => updateCaseStudy("client", v)} placeholder="Nombre de la marca" /><TextArea label="Brief de la marca" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { brief: "" }).brief} set={(v) => updateCaseStudy("brief", v)} /><Field label="Hook de apertura" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { hook: "" }).hook} set={(v) => updateCaseStudy("hook", v)} placeholder="La primera frase del video" /><TextArea label="Resultado" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { result: "" }).result} set={(v) => updateCaseStudy("result", v)} /><TextArea label="Testimonio" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { testimonial: "" }).testimonial} set={(v) => updateCaseStudy("testimonial", v)} /></div>}
+        {cloudError && <div className="assetSyncNotice" role="alert"><p>{cloudError}</p><button type="button" onClick={() => { setCloudReady(false); setLoadRetry((value) => value + 1); }}>Reintentar</button></div>}
+        {recoveryDraft && <div className="draftRecovery" role="status"><strong>Hay una copia local diferente</strong><p>Cargamos lo guardado en tu cuenta. La copia de este dispositivo contiene: {recoveryDraft.content.name || "Sin nombre"}{recoveryDraft.content.bio ? ` · ${recoveryDraft.content.bio.slice(0, 100)}` : ""}.</p><button type="button" onClick={() => { setData(restorePortfolio(recoveryDraft.content)); setRecoveryDraft(null); setSaved(false); }}>Usar esta copia local</button><button type="button" onClick={() => setRecoveryDraft(null)}>Continuar con la cuenta</button></div>}
+        {assetError && <div className="assetSyncNotice" role="alert"><span>!</span><p>{assetError}</p>{user && <button className="assetRetryButton" type="button" onClick={retryAssetUploads} disabled={assetUploads > 0}>{assetUploads > 0 ? "Subiendo…" : "Reintentar"}</button>}<button className="assetNoticeClose" type="button" onClick={() => setAssetError("")} aria-label="Cerrar aviso"><Icon glyph="×" /></button></div>}
+        {step === 2 && data.format === "website" && data.webTemplate === "stories" && data.portfolioCategories.length > 0 && <div className="formPanel"><div className="schemaSummary"><span><Icon glyph="✎" /></span><p><strong>Historia del caso · {data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]}</strong><small>Convierte esta categoría en un caso de campaña. Puedes dejar vacío lo que aún no tengas.</small></p></div><Field label="Marca o cliente" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { client: "" }).client} set={(v) => updateCaseStudy("client", v)} placeholder="Nombre de la marca" /><TextArea label="Brief de la marca" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { brief: "" }).brief} set={(v) => updateCaseStudy("brief", v)} /><Field label="Hook de apertura" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { hook: "" }).hook} set={(v) => updateCaseStudy("hook", v)} placeholder="La primera frase del video" /><TextArea label="Resultado" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { result: "" }).result} set={(v) => updateCaseStudy("result", v)} /><TextArea label="Testimonio" value={(data.caseStudies[data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0]] ?? { testimonial: "" }).testimonial} set={(v) => updateCaseStudy("testimonial", v)} /></div>}
         {step === 1 && <div className="formPanel"><AssetSlot title="Retrato principal" text="Aparece en la portada de todas las plantillas." media={portrait} accept="image/*,video/*" onChange={(event) => uploadSpecial("__portrait", event)} onRemove={() => portrait && remove(portrait.id)} /><Field label="Nombre público" value={data.name} set={(v) => update("name", v)} placeholder="Tu nombre" /><Field label="Título profesional" value={data.title} set={(v) => update("title", v)} placeholder="Creadora UGC | Beauty & Lifestyle" /><TextArea label="Sobre ti" value={data.bio} set={(v) => update("bio", v)} />{data.format === "website" && ["personal", "postcard"].includes(data.webTemplate) && <TextArea label="Así creo contenido · entrada de diario" value={data.creativeDiary} set={(v) => update("creativeDiary", v)} />}{data.format === "website" && data.webTemplate === "talent" && <Field label="Idiomas" value={data.languages} set={(v) => update("languages", v)} placeholder="Español · Inglés" />}<Field label="Ubicación" value={data.location} set={(v) => update("location", v)} placeholder="Ciudad, País" /><Choice title="Nichos principales" options={nicheOptions} selected={data.niches} toggle={(v) => toggle("niches", v)} language={data.language} /></div>}
         {step === 0 && <div className="formPanel"><div className="visualSettings languageSettings"><div className="languageChoice"><span>Idioma del portafolio</span><p>Los títulos y botones de la plantilla se mostrarán en este idioma.</p><div><button className={data.language === "es" ? "selected" : ""} onClick={() => update("language", "es")}>Español</button><button className={data.language === "en" ? "selected" : ""} onClick={() => update("language", "en")}>English</button></div></div></div><div className="choiceField templateFamily"><span>Plantillas de página web <small>{websiteOptions.length} estilos profesionales</small></span><p>Elige una y personalízala sin salir de su tarjeta.</p><div className="themeCards webThemeCards">{websiteOptions.map((item) => <Theme key={item.mode} {...item} accent={data.accent || "#6d4dff"} fontStyle={data.fontStyle} current={data.format === "website" ? data.webTemplate : ""} choose={(mode) => { setSaved(false); setData((current) => ({ ...current, format: "website", webTemplate: mode })); }} setAccent={(accent) => { setSaved(false); setData((current) => ({ ...current, accent })); }} setFont={(fontStyle) => { setSaved(false); setData((current) => ({ ...current, fontStyle })); }} resetStyle={(accent, fontStyle) => { setSaved(false); setData((current) => ({ ...current, accent, fontStyle })); }} />)}</div></div><div className="templateDivider"><span>O ELIGE UNA EXPERIENCIA PRESENTACIONAL</span></div><div className="choiceField templateFamily"><span>Plantillas presentacionales <small>7 estilos</small></span><p>Elige una y ajusta su color y tipografía en la misma tarjeta.</p><div className="themeCards">{templateOptions.map((item) => <Theme key={item.mode} {...item} accent={data.accent || "#6d4dff"} fontStyle={data.fontStyle} current={data.format === "presentation" ? data.template : ""} choose={(mode) => { setSaved(false); setData((current) => ({ ...current, format: "presentation", template: mode })); }} setAccent={(accent) => { setSaved(false); setData((current) => ({ ...current, accent })); }} setFont={(fontStyle) => { setSaved(false); setData((current) => ({ ...current, fontStyle })); }} resetStyle={(accent, fontStyle) => { setSaved(false); setData((current) => ({ ...current, accent, fontStyle })); }} />)}</div></div></div>}
-        {step === 2 && <div className="formPanel"><div className="schemaSummary"><span>✦</span><p><strong>{schema.id.replace("gallery", "Gallery").replace("studio", "Studio Luv").replace("scrapbook", "Scrapbook").replace("art", "Art Director").replace("blue", "Blue OS").replace("whimsy", "Whimsy").replace("sage", "Sage Journal").replace("muse", "Muse Editorial").replace("creator", "Creator Studio").replace("aura", "Aura Grid").replace("noir", "Noir Atelier").replace("sorbet", "Sorbet Studio").replace("lavender", "Lavender Cloud").replace("mint", "Mint Picnic").replace("electric", "Electric Pulse").replace("pop", "Sunny Pop").replace("retro", "Retro Zine").replace("chic", "Éditorial Chic").replace("bold", "Neo Brutal")}</strong><small>{schema.label}. El formulario respeta su composición.</small></p></div><Field label="Título de la sección de trabajos" value={data.campaignTitle} set={(v) => update("campaignTitle", v)} placeholder="Ej. Contenido que convierte" help="Es el encabezado que verá la marca antes de tus videos y fotos. Si lo dejas vacío, no se muestra." /><Choice title="Sectores con los que trabajas" options={clientOptions} selected={data.clientTypes} toggle={(v) => toggle("clientTypes", v)} language={data.language} /><div className="portfolioCategoryPicker"><Choice title="Categorías para organizar tus trabajos" options={categories} selected={data.portfolioCategories} toggle={(v) => toggle("portfolioCategories", v)} language={data.language} /><p>Primero elige una categoría y luego sube sus videos o fotos. Nada está preseleccionado.</p></div>{data.portfolioCategories.length > 0 && <div className="activeCategoryGuide"><span>1</span><div><strong>¿A qué categoría pertenece el archivo?</strong><small>Selecciona una antes de subir. La categoría activa queda resaltada.</small></div></div>}<div className="categoryTabs" role="tablist">{data.portfolioCategories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{portfolioOption(data, item)}<small>{workMedia.filter((m) => m.category === item).length}/{item === "Fotografía" ? schema.photoLimit : schema.categoryLimit}</small></button>)}</div>{data.portfolioCategories.length ? <label className="mediaDrop"><input type="file" accept="video/*,image/*" multiple onChange={upload} /><span>↑</span><strong>Subiendo a: “{portfolioOption(data, data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0])}”</strong><small>Imágenes hasta 10 MB · videos hasta 50 MB · {schema.label}.</small><b>Seleccionar archivos</b></label> : <div className="emptyCategory">Selecciona al menos una categoría para agregar contenido.</div>}{workMedia.length > 0 && <div className="mediaList">{workMedia.map((item) => <article key={item.id} className="mediaRow"><div className="mediaThumb">{item.previewUrl ? <img src={item.previewUrl} alt="Vista previa del contenido" /> : item.type === "video" ? <video src={item.url} muted /> : <img src={item.url} alt="Contenido subido" />}</div><div className="mediaInfo"><strong>{item.name}</strong><small><b className="mediaCategoryBadge">{portfolioOption(data, item.category)}</b>{item.type === "video" ? "Video" : "Foto"}</small>{item.type === "video" && <><button className={`frameChoice ${item.framed ? "selected" : ""}`} onClick={() => updateMedia(item.id, "framed", !item.framed)}>{item.framed ? "✓ Con marco de teléfono" : "Sin marco de teléfono"}</button><div className="mediaLinks"><input value={item.instagram} onChange={(e) => updateMedia(item.id, "instagram", e.target.value)} placeholder="Link de Instagram" /><input value={item.tiktok} onChange={(e) => updateMedia(item.id, "tiktok", e.target.value)} placeholder="Link de TikTok" /></div></>}</div><button className="removeMedia" onClick={() => remove(item.id)} aria-label="Eliminar">×</button></article>)}</div>}<div className="brandUpload"><div><strong>Logos de marcas</strong><small>JPG, PNG, WebP o GIF · máximo 10 MB por logo.</small></div><label><input type="file" accept="image/*" multiple onChange={uploadBrands} />＋ Agregar logos</label></div>{brands.length > 0 && <div className="brandList">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={brand.name} /><span>{brand.name}</span><button onClick={() => removeBrand(brand.id)} aria-label={`Eliminar ${brand.name}`}>×</button></article>)}</div>}</div>}
+        {step === 2 && <div className="formPanel"><div className="schemaSummary"><span><Icon glyph="✦" /></span><p><strong>{schema.id.replace("gallery", "Gallery").replace("studio", "Studio Luv").replace("scrapbook", "Scrapbook").replace("art", "Art Director").replace("blue", "Blue OS").replace("whimsy", "Whimsy").replace("sage", "Sage Journal").replace("muse", "Muse Editorial").replace("creator", "Creator Studio").replace("aura", "Aura Grid").replace("noir", "Noir Atelier").replace("sorbet", "Sorbet Studio").replace("lavender", "Lavender Cloud").replace("mint", "Mint Picnic").replace("electric", "Electric Pulse").replace("pop", "Sunny Pop").replace("retro", "Retro Zine").replace("chic", "Éditorial Chic").replace("bold", "Neo Brutal")}</strong><small>{schema.label}. El formulario respeta su composición.</small></p></div><Field label="Título de la sección de trabajos" value={data.campaignTitle} set={(v) => update("campaignTitle", v)} placeholder="Ej. Contenido que convierte" help="Es el encabezado que verá la marca antes de tus videos y fotos. Si lo dejas vacío, no se muestra." /><Choice title="Sectores con los que trabajas" options={clientOptions} selected={data.clientTypes} toggle={(v) => toggle("clientTypes", v)} language={data.language} /><div className="portfolioCategoryPicker"><Choice title="Categorías para organizar tus trabajos" options={categories} selected={data.portfolioCategories} toggle={(v) => toggle("portfolioCategories", v)} language={data.language} /><p>Primero elige una categoría y luego sube sus videos o fotos. Nada está preseleccionado.</p></div>{data.portfolioCategories.length > 0 && <div className="activeCategoryGuide"><span>1</span><div><strong>¿A qué categoría pertenece el archivo?</strong><small>Selecciona una antes de subir. La categoría activa queda resaltada.</small></div></div>}<div className="categoryTabs" role="tablist">{data.portfolioCategories.map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{portfolioOption(data, item)}<small>{workMedia.filter((m) => m.category === item).length}/{item === "Fotografía" ? schema.photoLimit : schema.categoryLimit}</small></button>)}</div>{data.portfolioCategories.length ? <label className="mediaDrop"><input type="file" accept="video/*,image/*" multiple onChange={upload} /><span><Icon glyph="↑" /></span><strong>Subiendo a: “{portfolioOption(data, data.portfolioCategories.includes(category) ? category : data.portfolioCategories[0])}”</strong><small>Imágenes hasta 10 MB · videos hasta 50 MB · {schema.label}.</small><b>Seleccionar archivos</b></label> : <div className="emptyCategory">Selecciona al menos una categoría para agregar contenido.</div>}{workMedia.length > 0 && <div className="mediaList">{workMedia.map((item) => <article key={item.id} className="mediaRow"><div className="mediaThumb">{item.previewUrl ? <img src={item.previewUrl} alt="Vista previa del contenido" /> : item.type === "video" ? <video src={item.url} muted /> : <img src={item.url} alt="Contenido subido" />}</div><div className="mediaInfo"><strong>{item.name}</strong><small><b className="mediaCategoryBadge">{portfolioOption(data, item.category)}</b>{item.type === "video" ? "Video" : "Foto"}</small>{item.type === "video" && <><button className={`frameChoice ${item.framed ? "selected" : ""}`} onClick={() => updateMedia(item.id, "framed", !item.framed)}>{item.framed ? <><Icon glyph="✓" /> Con marco de teléfono</> : "Sin marco de teléfono"}</button><div className="mediaLinks"><input value={item.instagram} onChange={(e) => updateMedia(item.id, "instagram", e.target.value)} placeholder="Link de Instagram" /><input value={item.tiktok} onChange={(e) => updateMedia(item.id, "tiktok", e.target.value)} placeholder="Link de TikTok" /></div></>}</div><button className="removeMedia" onClick={() => remove(item.id)} aria-label="Eliminar"><Icon glyph="×" /></button></article>)}</div>}<div className="brandUpload"><div><strong>Logos de marcas</strong><small>JPG, PNG, WebP o GIF · máximo 10 MB por logo.</small></div><label><input type="file" accept="image/*" multiple onChange={uploadBrands} /><Icon glyph="＋" /> Agregar logos</label></div>{brands.length > 0 && <div className="brandList">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={brand.name} /><span>{brand.name}</span><button onClick={() => removeBrand(brand.id)} aria-label={`Eliminar ${brand.name}`}><Icon glyph="×" /></button></article>)}</div>}</div>}
         {step === 3 && <div className="formPanel"><div className="twoFields"><Field label="Seguidores" value={data.followers} set={(v) => update("followers", v)} placeholder="Ej. 50.5 mil" /><Field label="Visualizaciones / mes" value={data.monthlyViews} set={(v) => update("monthlyViews", v)} placeholder="Ej. 700 K" /></div><Field label="Porcentaje de audiencia femenina" value={data.womenAudience} set={(v) => update("womenAudience", v)} placeholder="Ej. 82.9%" /><TextArea label="Países principales y porcentajes" value={data.topCountries} set={(v) => update("topCountries", v)} placeholder="Ej. Colombia 79% · México 12% · España 9%" /><div className="metricPreview"><span><b>{data.womenAudience || "—"}</b><small>Mujeres</small></span><div><strong>{data.followers || "—"}</strong><small>seguidores</small></div><div><strong>{data.monthlyViews || "—"}</strong><small>vistas mensuales</small></div></div></div>}
         {step === 4 && <div className="formPanel"><Choice title="Cada video UGC incluye" options={includeOptions} selected={data.includes} toggle={(v) => toggle("includes", v)} language={data.language} services /><div className="twoFields"><Field label="Video UGC" value={data.videoRate} set={(v) => update("videoRate", v)} placeholder="$350.000 COP" /><Field label="Reel en colaboración" value={data.collabRate} set={(v) => update("collabRate", v)} placeholder="$400.000 COP" /><Field label="1 historia con CTA" value={data.storyRate} set={(v) => update("storyRate", v)} placeholder="$80.000 COP" /><Field label="Pack 3 historias" value={data.storyPackRate} set={(v) => update("storyPackRate", v)} placeholder="$210.000 COP" /></div><Field label="Derechos de pauta por mes" value={data.usageRate} set={(v) => update("usageRate", v)} placeholder="$80.000 COP / mes" /></div>}
-        {step === 5 && <div className="formPanel">{schema.contactVisual && <AssetSlot title="Visual de cierre" text="Aparece en la última lámina de esta plantilla." media={contactVisual} accept="image/*,video/*" onChange={(event) => uploadSpecial("__contact", event)} onRemove={() => contactVisual && remove(contactVisual.id)} />}<Choice title="Tipos de contenido" options={contentOptions} selected={data.contentTypes} toggle={(v) => toggle("contentTypes", v)} language={data.language} services /><div className="twoFields"><Field label="Correo" type="email" value={data.email} set={(v) => update("email", v)} placeholder="hola@tucorreo.com" /><Field label="WhatsApp" value={data.whatsapp} set={(v) => update("whatsapp", v)} placeholder="+57 300 000 0000" help="Incluye el código de país. El botón “Trabajemos” abrirá este chat." required /><Field label="Instagram" value={data.instagram} set={(v) => update("instagram", v)} placeholder="@tuusuario" /><Field label="TikTok" value={data.tiktok} set={(v) => update("tiktok", v)} placeholder="@tuusuario" /></div><Field label="Disponibilidad" value={data.availability} set={(v) => update("availability", v)} placeholder="Disponible para campañas" /><Choice title="Servicios ofrecidos" options={serviceOptions} selected={data.services} toggle={(v) => toggle("services", v)} language={data.language} services /><div className="readyCard"><span>✦</span><div><strong>Tu presentación está lista</strong><p>Usa la rueda del mouse, el trackpad, las flechas o desliza para recorrerla.</p></div></div></div>}
-        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} placeholder="tu-nombre" onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? "✓ Este enlace está disponible" : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div><div className={`publishRequirement ${validWhatsapp(data.whatsapp) ? "complete" : "missing"}`}><span>{validWhatsapp(data.whatsapp) ? "✓" : "!"}</span><p><strong>WhatsApp para recibir propuestas</strong><small>{validWhatsapp(data.whatsapp) ? "El botón “Trabajemos” abrirá tu chat de WhatsApp." : "Agrega un número válido con código de país para poder publicar."}</small></p>{!validWhatsapp(data.whatsapp) && <button type="button" onClick={() => requestStep(5)}>Agregar WhatsApp</button>}</div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => void saveViewNotifications(value)} title="Resumen de actividad" text={notificationBusy ? "Guardando tu preferencia…" : "Recibe un resumen semanal cuando haya actividad nueva. Puedes cambiar la frecuencia en tu cuenta."} /><div className="viewPulse"><span>◉</span><p><strong>{views} {views === 1 ? "visualización real" : "visualizaciones reales"}</strong><small>El panel de tu cuenta muestra visitantes aproximados y clics por canal.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span>↗</span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => void downloadPdf()} disabled={pdfBusy}><span>↓</span><strong>{pdfBusy ? "Creando PDF…" : "Media kit PDF"}</strong><small>Descarga un archivo listo para compartir</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? "✓" : "✦"}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : validWhatsapp(data.whatsapp) ? "Publícalo cuando quieras. Tu borrador permanece guardado." : "Completa tu WhatsApp para habilitar la publicación."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado ↗</a><button onClick={copyLink}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking" || !validWhatsapp(data.whatsapp)}>{publishBusy ? "Publicando…" : "Publicar gratis ↗"}</button>}</div></div>}
-        <div className="builderActions"><button className="backButton" onClick={() => requestStep(Math.max(0, step - 1))} disabled={step === 0}>← Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => requestStep(step + 1)}>Continuar <span>→</span></button> : <button className="nextButton" onClick={() => openPortfolio()}>Ver portafolio <span>↗</span></button>}</div>
+        {step === 5 && <div className="formPanel">{schema.contactVisual && <AssetSlot title="Visual de cierre" text="Aparece en la última lámina de esta plantilla." media={contactVisual} accept="image/*,video/*" onChange={(event) => uploadSpecial("__contact", event)} onRemove={() => contactVisual && remove(contactVisual.id)} />}<Choice title="Tipos de contenido" options={contentOptions} selected={data.contentTypes} toggle={(v) => toggle("contentTypes", v)} language={data.language} services /><div className="twoFields"><Field label="Correo" type="email" value={data.email} set={(v) => update("email", v)} placeholder="hola@tucorreo.com" /><Field label="WhatsApp" value={data.whatsapp} set={(v) => update("whatsapp", v)} placeholder="+57 300 000 0000" help="Incluye el código de país. El botón “Trabajemos” abrirá este chat." required /><Field label="Instagram" value={data.instagram} set={(v) => update("instagram", v)} placeholder="@tuusuario" /><Field label="TikTok" value={data.tiktok} set={(v) => update("tiktok", v)} placeholder="@tuusuario" /></div><Field label="Disponibilidad" value={data.availability} set={(v) => update("availability", v)} placeholder="Disponible para campañas" /><Choice title="Servicios ofrecidos" options={serviceOptions} selected={data.services} toggle={(v) => toggle("services", v)} language={data.language} services /><div className="readyCard"><span><Icon glyph="✦" /></span><div><strong>Tu presentación está lista</strong><p>Usa la rueda del mouse, el trackpad, las flechas o desliza para recorrerla.</p></div></div></div>}
+        {step === 6 && <div className="formPanel publishPanel"><div className="publishUrl"><span>Tu enlace Brilla</span><div><b>brillaugc.com/</b><input aria-label="Nombre del enlace" value={data.portfolioSlug} placeholder="tu-nombre" onChange={(e) => updateSlug(e.target.value)} /></div><small className={`slugFeedback ${slugState}`}>{slugState === "checking" ? "Comprobando disponibilidad…" : slugState === "available" ? <><Icon glyph="✓" /> Este enlace está disponible</> : slugState === "taken" ? "Ese enlace ya está ocupado" : slugState === "invalid" ? "Usa entre 3 y 80 caracteres, sin espacios" : "Se validará antes de publicar"}</small></div><div className={`publishRequirement ${validWhatsapp(data.whatsapp) ? "complete" : "missing"}`}><span>{validWhatsapp(data.whatsapp) ? <><Icon glyph="✓" /></> : "!"}</span><p><strong>WhatsApp para recibir propuestas</strong><small>{validWhatsapp(data.whatsapp) ? "El botón “Trabajemos” abrirá tu chat de WhatsApp." : "Agrega un número válido con código de país para poder publicar."}</small></p>{!validWhatsapp(data.whatsapp) && <button type="button" onClick={() => requestStep(5)}>Agregar WhatsApp</button>}</div>{publishError && <p className="publishError" role="alert">{publishError}</p>}<ToggleRow checked={data.notifyViews} set={(value) => void saveViewNotifications(value)} title="Resumen de actividad" text={notificationBusy ? "Guardando tu preferencia…" : "Recibe un resumen semanal cuando haya actividad nueva. Puedes cambiar la frecuencia en tu cuenta."} /><div className="viewPulse"><span><Icon glyph="◉" /></span><p><strong>{views} {views === 1 ? "visualización real" : "visualizaciones reales"}</strong><small>El panel de tu cuenta muestra visitantes aproximados y clics por canal.</small></p></div><div className="publishTools"><button onClick={openPortfolio}><span><Icon glyph="↗" /></span><strong>Vista previa pública</strong><small>Comprueba la experiencia de la marca</small></button><button onClick={() => void downloadPdf()} disabled={pdfBusy}><span><Icon glyph="↓" /></span><strong>{pdfBusy ? "Creando PDF…" : "Media kit PDF"}</strong><small>Descarga un archivo listo para compartir</small></button></div><div className={`publishReady ${published ? "published" : ""}`}><div><span>{published ? <><Icon glyph="✓" /></> : <><Icon glyph="✦" /></>}</span><p><strong>{published ? "Portafolio publicado" : publicationStatus === "unpublished" ? "Portafolio despublicado" : "Todo listo para brillar"}</strong><small>{published ? `Disponible en brillaugc.com/${data.portfolioSlug}` : validWhatsapp(data.whatsapp) ? "Publícalo cuando quieras. Tu borrador permanece guardado." : "Completa tu WhatsApp para habilitar la publicación."}</small></p></div>{published ? <div className="publishReadyActions"><a href={`/${data.portfolioSlug}`} target="_blank" rel="noreferrer">Ver publicado <Icon glyph="↗" /></a><button onClick={copyLink}>{copied ? <>Enlace copiado <Icon glyph="✓" /></> : "Copiar enlace"}</button><button className="unpublishButton" onClick={unpublish} disabled={publishBusy}>Despublicar</button></div> : <button onClick={publish} disabled={publishBusy || slugState === "checking" || !validWhatsapp(data.whatsapp)}>{publishBusy ? "Publicando…" : <>Publicar gratis <Icon glyph="↗" /></>}</button>}</div></div>}
+        <div className="builderActions"><button className="backButton" onClick={() => requestStep(Math.max(0, step - 1))} disabled={step === 0}><Icon glyph="←" /> Atrás</button>{step < steps.length - 1 ? <button className="nextButton" onClick={() => requestStep(step + 1)}>Continuar <span><Icon glyph="→" /></span></button> : <button className="nextButton" onClick={() => openPortfolio()}>Ver portafolio <span><Icon glyph="↗" /></span></button>}</div>
       </section>
       {mobilePreviewOpen && <button className="mobilePreviewBackdrop isOpen" type="button" aria-label="Cerrar vista previa" onClick={() => setMobilePreviewOpen(false)} />}
-      <aside ref={previewRef} className={`livePreview ${mobilePreviewOpen ? "mobilePreviewOpen" : ""}`} aria-label="Vista previa del portafolio"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>{data.format === "website" ? "Página web · cambios en vivo" : "Presentación horizontal · cambios en vivo"}</strong></div><small>{data.format === "website" ? "Scroll ↓" : "Desliza →"}</small><div className="mobilePreviewControls"><button className="mobilePreviewFullscreen" type="button" onClick={() => openPortfolio()}><span aria-hidden="true">↗</span><b>Abrir vista</b></button><button className="mobilePreviewToggle" type="button" aria-label="Cerrar vista previa" onClick={() => setMobilePreviewOpen(false)}>×</button></div></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} />}</aside>
+      <aside ref={previewRef} className={`livePreview ${mobilePreviewOpen ? "mobilePreviewOpen" : ""}`} aria-label="Vista previa del portafolio"><div className="previewHeader"><div><span>VISTA PREVIA</span><strong>{data.format === "website" ? "Página web · cambios en vivo" : "Presentación horizontal · cambios en vivo"}</strong></div><small>{data.format === "website" ? "Scroll ↓" : "Desliza →"}</small><div className="mobilePreviewControls"><button className="mobilePreviewFullscreen" type="button" onClick={() => openPortfolio()}><span aria-hidden="true"><Icon glyph="↗" /></span><b>Abrir vista</b></button><button className="mobilePreviewToggle" type="button" aria-label="Cerrar vista previa" onClick={() => setMobilePreviewOpen(false)}><Icon glyph="×" /></button></div></div>{data.format === "website" ? <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} /> : <PortfolioDeck data={data} media={media} brands={brands} schema={schema} />}</aside>
     </div>
-    {authPromptOpen && <div className="identityAuthOverlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthPromptOpen(false); }}><section className="identityAuthCard" role="dialog" aria-modal="true" aria-labelledby="identity-auth-title"><button className="identityAuthClose" type="button" onClick={() => setAuthPromptOpen(false)} aria-label="Volver a Identidad">×</button><span className="identityAuthMark">✦</span><small>IDENTIDAD COMPLETADA</small><h2 id="identity-auth-title">Para continuar, inicia sesión.</h2><p>Tu plantilla y la información que acabas de completar ya están guardadas en este dispositivo.</p><div className="identityAuthPromise"><span>✓</span><div><strong>No perderás tu progreso</strong><small>Al volver de Google continuarás exactamente desde aquí.</small></div></div>{authError && <p className="identityAuthError" role="alert">{authError}</p>}<LegalConsentCheckbox id="editor-login-legal-consent" checked={loginConsentChecked} onChange={setLoginConsentChecked} /><button className="googleContinue" type="button" onClick={continueWithGoogle} disabled={authBusy || checkingAuth || !loginConsentChecked}><b>G</b>{checkingAuth ? "Comprobando sesión…" : authBusy ? "Abriendo Google…" : "Continuar con Google"}<span>→</span></button><button className="identityAuthBack" type="button" onClick={() => setAuthPromptOpen(false)}>Seguir editando mi identidad</button></section></div>}
+    {authPromptOpen && <div className="identityAuthOverlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthPromptOpen(false); }}><section className="identityAuthCard" role="dialog" aria-modal="true" aria-labelledby="identity-auth-title"><button className="identityAuthClose" type="button" onClick={() => setAuthPromptOpen(false)} aria-label="Volver a Identidad"><Icon glyph="×" /></button><span className="identityAuthMark"><Icon glyph="✦" /></span><small>IDENTIDAD COMPLETADA</small><h2 id="identity-auth-title">Para continuar, inicia sesión.</h2><p>Tu plantilla y la información que acabas de completar ya están guardadas en este dispositivo.</p><div className="identityAuthPromise"><span><Icon glyph="✓" /></span><div><strong>No perderás tu progreso</strong><small>Al volver de Google continuarás exactamente desde aquí.</small></div></div>{authError && <p className="identityAuthError" role="alert">{authError}</p>}<LegalConsentCheckbox id="editor-login-legal-consent" checked={loginConsentChecked} onChange={setLoginConsentChecked} /><button className="googleContinue" type="button" onClick={continueWithGoogle} disabled={authBusy || checkingAuth || !loginConsentChecked}><b>G</b>{checkingAuth ? "Comprobando sesión…" : authBusy ? "Abriendo Google…" : "Continuar con Google"}<span><Icon glyph="→" /></span></button><button className="identityAuthBack" type="button" onClick={() => setAuthPromptOpen(false)}>Seguir editando mi identidad</button></section></div>}
   </main>;
 }
 
 function Field({ label, value, set, placeholder, type = "text", help, required = false }: { label: string; value: string; set: (v: string) => void; placeholder: string; type?: string; help?: string; required?: boolean }) { return <label className="builderField"><span>{label}{required && <b className="requiredBadge">Obligatorio para publicar</b>}</span>{help && <small className="fieldHelp">{help}</small>}<input type={type} value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} required={required} /></label>; }
 function TextArea({ label, value, set, placeholder = "Escribe aquí…" }: { label: string; value: string; set: (v: string) => void; placeholder?: string }) { return <label className="builderField"><span>{label}</span><textarea value={value} onChange={(e) => set(e.target.value)} placeholder={placeholder} /></label>; }
-function AssetSlot({ title, text, media, accept, onChange, onRemove }: { title: string; text: string; media: Media | null; accept: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; onRemove: () => void }) { return <div className={`assetSlot ${media ? "filled" : ""}`}>{media && <div className="assetSlotPreview">{media.type === "video" ? <video src={media.url} poster={media.previewUrl} muted playsInline /> : <img src={media.url} alt={title} />}</div>}<div><strong>{media ? media.name : title}</strong><small>{media ? `${title} · listo` : text}</small></div><label><input type="file" accept={accept} onChange={onChange} />{media ? "Cambiar" : "Subir archivo"}</label>{media && <button onClick={onRemove} aria-label={`Eliminar ${title}`}>×</button>}</div>; }
+function AssetSlot({ title, text, media, accept, onChange, onRemove }: { title: string; text: string; media: Media | null; accept: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void; onRemove: () => void }) { return <div className={`assetSlot ${media ? "filled" : ""}`}>{media && <div className="assetSlotPreview">{media.type === "video" ? <video src={media.url} poster={media.previewUrl} muted playsInline /> : <img src={media.url} alt={title} />}</div>}<div><strong>{media ? media.name : title}</strong><small>{media ? `${title} · listo` : text}</small></div><label><input type="file" accept={accept} onChange={onChange} />{media ? "Cambiar" : "Subir archivo"}</label>{media && <button onClick={onRemove} aria-label={`Eliminar ${title}`}><Icon glyph="×" /></button>}</div>; }
 function ToggleRow({ checked, set, title, text }: { checked: boolean; set: (value: boolean) => void; title: string; text: string }) { return <label className="toggleRow"><div><strong>{title}</strong><small>{text}</small></div><input aria-label={title} type="checkbox" checked={checked} onChange={(event) => set(event.target.checked)} /><i aria-hidden="true" /></label>; }
-function Choice({ title, options, selected, toggle, language, services = false }: { title: string; options: string[]; selected: string[]; toggle: (v: string) => void; language: Portfolio["language"]; services?: boolean }) { return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i>{selected.includes(option) ? "✓" : "+"}</i>{portfolioOption({ language }, option)}</button>)}</div></div>; }
+function Choice({ title, options, selected, toggle, language, services = false }: { title: string; options: string[]; selected: string[]; toggle: (v: string) => void; language: Portfolio["language"]; services?: boolean }) { return <div className="choiceField"><span>{title}</span><div className={services ? "serviceGrid" : "chipList"}>{options.map((option) => <button key={option} className={selected.includes(option) ? "selected" : ""} onClick={() => toggle(option)}><i><Icon glyph={selected.includes(option) ? "✓" : "+"} /></i>{portfolioOption({ language }, option)}</button>)}</div></div>; }
 function Theme({ name, note, mode, font, defaultFont, defaultAccent, current, choose, accent, fontStyle, setAccent, setFont, resetStyle }: { name: string; note: string; mode: string; font: string; defaultFont: string; defaultAccent: string; current: string; choose: (mode: string) => void; accent: string; fontStyle: string; setAccent: (value: string) => void; setFont: (value: string) => void; resetStyle: (accent: string, fontStyle: string) => void }) {
   const selected = current === mode;
   return <article className={`themeCard ${selected ? "selected" : ""}`} style={{ "--theme-accent": accent } as CSSProperties}>
     <button className="themeSelectButton" type="button" onClick={() => choose(mode)} aria-pressed={selected}><i className={`themePreview ${mode}`}><b>{name}</b><em>Aa</em><u /></i><strong>{name}</strong><small>{note}</small><span>{templateSchemas[mode].label} · {font}</span></button>
-    {selected && <div className="templateQuickControls"><div><strong>Color</strong><div className="quickColors">{colors.map((color) => <button key={color} type="button" aria-label={`Usar color ${color} en ${name}`} className={accent === color ? "selected" : ""} style={{ background: color }} onClick={() => setAccent(color)} />)}<label aria-label={`Elegir color personalizado para ${name}`}><input type="color" value={accent} onChange={(event) => setAccent(event.target.value)} />＋</label></div></div><div><strong>Tipografía</strong><div className="quickFonts">{fontOptions.map((option) => <button key={option.value} type="button" className={fontStyle === option.value ? "selected" : ""} onClick={() => setFont(option.value)}><b>{option.sample}</b><span>{option.name}</span></button>)}</div></div><button className="resetTemplateStyle" type="button" onClick={() => resetStyle(defaultAccent, defaultFont)}>↺ Restablecer estilo</button></div>}
+    {selected && <div className="templateQuickControls"><div><strong>Color</strong><div className="quickColors">{colors.map((color) => <button key={color} type="button" aria-label={`Usar color ${color} en ${name}`} className={accent === color ? "selected" : ""} style={{ background: color }} onClick={() => setAccent(color)} />)}<label aria-label={`Elegir color personalizado para ${name}`}><input type="color" value={accent} onChange={(event) => setAccent(event.target.value)} /><Icon glyph="＋" /></label></div></div><div><strong>Tipografía</strong><div className="quickFonts">{fontOptions.map((option) => <button key={option.value} type="button" className={fontStyle === option.value ? "selected" : ""} onClick={() => setFont(option.value)}><b>{option.sample}</b><span>{option.name}</span></button>)}</div></div><button className="resetTemplateStyle" type="button" onClick={() => resetStyle(defaultAccent, defaultFont)}><Icon glyph="↺" /> Restablecer estilo</button></div>}
   </article>;
 }
 
@@ -1184,18 +1246,18 @@ export function WebsitePortfolio({ data, media, brands, schema, expanded = false
   const hasRates = hasAnyText(data.videoRate, data.collabRate, data.storyRate, data.storyPackRate, data.usageRate) || data.includes.length > 0;
   const hasContact = hasAnyText(data.email, data.whatsapp, data.instagram, data.tiktok, data.availability);
   return <div className={`websitePortfolio website-${webTemplate} font-${data.fontStyle} ${expanded ? "expanded" : "compact"}`} style={{ "--site-accent": portfolioAccent(data) } as CSSProperties}>
-    <header className="siteNav">{hasText(firstName) && <strong>{firstName}<i>✦</i></strong>}<nav>{groups.length > 0 && <a href="#web-work">{portfolioText(data, "Trabajo", "Work")}</a>}{data.services.length > 0 && <a href="#web-services">{portfolioText(data, "Servicios", "Services")}</a>}{hasRates && <a href="#web-rates">{portfolioText(data, "Tarifas", "Rates")}</a>}{hasText(data.whatsapp) && <a className="navContact" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{portfolioText(data, "Trabajemos ↗", "Let's work ↗")}</a>}</nav></header>
-    <section className="siteHero webSection"><div className="webHeroCopy">{hasText(data.location) && <small><i>✦</i> UGC CREATOR — {data.location}</small>}{hasText(data.name) && <h1>{data.name}</h1>}{hasText(data.title) && <p className="heroRole">{data.title}</p>}{hasText(data.bio) && <p className="heroBio">{data.bio}</p>}{(groups.length > 0 || hasText(data.whatsapp)) && <div className="webHeroActions">{groups.length > 0 && <a className="heroCta" href="#web-work">{portfolioText(data, "Ver mi trabajo ↓", "View my work ↓")}</a>}{hasText(data.whatsapp) && <a className="heroGhost" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{portfolioText(data, "Trabajemos", "Let's work")}</a>}</div>}</div>{(portrait || hasText(data.availability)) && <div className="webHeroVisual">{portrait && <MediaCard item={portrait} label={portfolioText(data, "TU FOTO", "YOUR PHOTO")} index={0} />}<span className="heroSticker st1">✦</span><span className="heroSticker st2">☆</span>{hasText(data.availability) && <em className="heroNote">{data.availability}</em>}</div>}</section>
-    {ticker.length > 0 && <div className="webMarquee" aria-hidden><div>{Array.from({ length: 2 }, (_, dup) => ticker.map((word, i) => <span key={`${dup}-${i}`}>{portfolioOption(data, word)}<i>✦</i></span>))}</div></div>}
+    <header className="siteNav">{hasText(firstName) && <strong>{firstName}<i><Icon glyph="✦" /></i></strong>}<nav>{groups.length > 0 && <a href="#web-work">{portfolioText(data, "Trabajo", "Work")}</a>}{data.services.length > 0 && <a href="#web-services">{portfolioText(data, "Servicios", "Services")}</a>}{hasRates && <a href="#web-rates">{portfolioText(data, "Tarifas", "Rates")}</a>}{hasText(data.whatsapp) && <a className="navContact" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{portfolioText(data, "Trabajemos ↗", "Let's work ↗")}</a>}</nav></header>
+    <section className="siteHero webSection"><div className="webHeroCopy">{hasText(data.location) && <small><i><Icon glyph="✦" /></i> UGC CREATOR — {data.location}</small>}{hasText(data.name) && <h1>{data.name}</h1>}{hasText(data.title) && <p className="heroRole">{data.title}</p>}{hasText(data.bio) && <p className="heroBio">{data.bio}</p>}{(groups.length > 0 || hasText(data.whatsapp)) && <div className="webHeroActions">{groups.length > 0 && <a className="heroCta" href="#web-work">{portfolioText(data, "Ver mi trabajo ↓", "View my work ↓")}</a>}{hasText(data.whatsapp) && <a className="heroGhost" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{portfolioText(data, "Trabajemos", "Let's work")}</a>}</div>}</div>{(portrait || hasText(data.availability)) && <div className="webHeroVisual">{portrait && <MediaCard item={portrait} label={portfolioText(data, "TU FOTO", "YOUR PHOTO")} index={0} />}<span className="heroSticker st1"><Icon glyph="✦" /></span><span className="heroSticker st2"><Icon glyph="☆" /></span>{hasText(data.availability) && <em className="heroNote">{data.availability}</em>}</div>}</section>
+    {ticker.length > 0 && <div className="webMarquee" aria-hidden><div>{Array.from({ length: 2 }, (_, dup) => ticker.map((word, i) => <span key={`${dup}-${i}`}>{portfolioOption(data, word)}<i><Icon glyph="✦" /></i></span>))}</div></div>}
     {hasAnyText(data.followers, data.monthlyViews, data.womenAudience) || data.niches.length > 0 ? <div className="webProof">{hasText(data.followers) && <span><b>{data.followers}</b>{portfolioText(data, "seguidores", "followers")}</span>}{hasText(data.monthlyViews) && <span><b>{data.monthlyViews}</b>{portfolioText(data, "vistas / mes", "views / month")}</span>}{hasText(data.womenAudience) && <span><b>{data.womenAudience}</b>{portfolioText(data, "audiencia femenina", "female audience")}</span>}{data.niches.length > 0 && <span><b>{String(data.niches.length).padStart(2, "0")}</b>{portfolioText(data, "nichos creativos", "creative niches")}</span>}</div> : null}
     {hasAbout && <section className="webAbout webSection" id="web-about"><div className="webSectionTitle"><small>01 — {portfolioText(data, "SOBRE MÍ", "ABOUT ME")}</small><h2>{portfolioText(data, "Historias reales que conectan con tu audiencia.", "Real stories that connect with your audience.")}</h2></div><div className="aboutBody">{hasText(data.bio) && <p>{data.bio}</p>}{aboutTags.length > 0 && <div className="webTags">{aboutTags.map((item) => <span key={item}>{portfolioOption(data, item)}</span>)}</div>}{data.contentTypes.length > 0 && <div className="aboutContent"><b>{portfolioText(data, "CONTENIDO QUE CREO", "CONTENT I CREATE")}</b><p>{portfolioOptions(data, data.contentTypes).join(" · ")}</p></div>}</div></section>}
-    {groups.length > 0 && <section className="siteWork webSection" id="web-work"><div className="webSectionTitle"><small>02 — {portfolioText(data, "PORTAFOLIO", "PORTFOLIO")}</small>{hasText(data.campaignTitle) && <h2>{data.campaignTitle}</h2>}</div>{groups.map((group, gi) => <article className="webProjectGroup" key={group.category}><header><h3><i>{icons[gi % icons.length]}</i>{portfolioOption(data, group.category)}</h3><span>{String(group.items.length).padStart(2, "0")} / {group.category === "Fotografía" ? schema.photoLimit : schema.categoryLimit} {portfolioText(data, "PIEZAS", "PIECES")}</span></header><div style={{ "--work-count": Math.min(group.items.length, 4) } as CSSProperties}>{group.items.map((item, index) => <MediaCard key={item.id} item={item} label={portfolioOption(data, item.category)} index={index} />)}</div></article>)}</section>}
+    {groups.length > 0 && <section className="siteWork webSection" id="web-work"><div className="webSectionTitle"><small>02 — {portfolioText(data, "PORTAFOLIO", "PORTFOLIO")}</small>{hasText(data.campaignTitle) && <h2>{data.campaignTitle}</h2>}</div>{groups.map((group, gi) => <article className="webProjectGroup" key={group.category}><header><h3><i><Icon glyph={icons[gi % icons.length]} /></i>{portfolioOption(data, group.category)}</h3><span>{String(group.items.length).padStart(2, "0")} / {group.category === "Fotografía" ? schema.photoLimit : schema.categoryLimit} {portfolioText(data, "PIEZAS", "PIECES")}</span></header><div style={{ "--work-count": Math.min(group.items.length, 4) } as CSSProperties}>{group.items.map((item, index) => <MediaCard key={item.id} item={item} label={portfolioOption(data, item.category)} index={index} />)}</div></article>)}</section>}
     {brands.length > 0 && <section className="webBrands webSection"><div className="webSectionTitle center"><small>03 — {portfolioText(data, "EXPERIENCIA", "EXPERIENCE")}</small><h2>{portfolioText(data, "Marcas que ya brillaron conmigo.", "Brands that have already shined with me.")}</h2></div><div className="brandGrid">{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={`Logo de ${brand.name}`} /><span>{brand.name}</span></article>)}</div></section>}
     {hasAudience && <section className="webAudience webSection"><div className="audienceCopy"><small>04 — {portfolioText(data, "AUDIENCIA", "AUDIENCE")}</small><h2>{portfolioText(data, "Una comunidad que confía en lo que recomiendo.", "A community that trusts what I recommend.")}</h2>{hasAnyText(data.followers, data.monthlyViews, data.womenAudience) && <div className="webNumbers">{hasText(data.followers) && <span><b>{data.followers}</b>{portfolioText(data, "seguidores", "followers")}</span>}{hasText(data.monthlyViews) && <span><b>{data.monthlyViews}</b>{portfolioText(data, "vistas / mes", "views / month")}</span>}{hasText(data.womenAudience) && <span><b>{data.womenAudience}</b>{portfolioText(data, "mujeres", "women")}</span>}</div>}{hasAnyText(data.instagram, data.tiktok) && <div className="audienceSocial">{hasText(data.instagram) && <a href={socialLink("instagram", data.instagram)} target="_blank" rel="noreferrer" data-analytics-target="instagram"><b>IG</b>{data.instagram}</a>}{hasText(data.tiktok) && <a href={socialLink("tiktok", data.tiktok)} target="_blank" rel="noreferrer" data-analytics-target="tiktok"><b>TK</b>{data.tiktok}</a>}</div>}</div>{(hasText(data.womenAudience) || countries.length > 0) && <div className="webAudienceCard">{hasText(data.womenAudience) && <div className="webAudienceRing"><b>{data.womenAudience}</b><span>{portfolioText(data, "audiencia femenina", "female audience")}</span></div>}{countries.length > 0 && <div className="countryBars">{countries.map((country, index) => <p key={country}><span>{country}</span><i style={{ width: `${Math.max(18, 88 - index * 18)}%` }} /></p>)}</div>}</div>}</section>}
-    {data.services.length > 0 && <section className="webServices webSection" id="web-services"><div className="webSectionTitle"><small>05 — {portfolioText(data, "SERVICIOS", "SERVICES")}</small><h2>{portfolioText(data, "Todo lo que puedo crear para tu marca.", "Everything I can create for your brand.")}</h2></div><div className="serviceCards">{data.services.map((service, index) => <article key={service}><span>{String(index + 1).padStart(2, "0")}</span><h3>{portfolioOption(data, service)}</h3><b>{icons[index % icons.length]}</b></article>)}</div></section>}
-    {hasRates && <section className="webRates webSection" id="web-rates"><div className="webSectionTitle"><small>06 — {portfolioText(data, "TARIFAS", "RATES")}</small><h2>{portfolioText(data, "Inversión clara, sin sorpresas.", "Clear pricing, no surprises.")}</h2></div><div className="rateBoard">{(hasText(data.videoRate) || data.includes.length > 0) && <article className="rateHero"><small>{portfolioText(data, "EL FAVORITO ✦", "THE FAVORITE ✦")}</small><h3>Video UGC</h3>{hasText(data.videoRate) && <b>{data.videoRate}</b>}{data.includes.length > 0 && <ul>{data.includes.map((include) => <li key={include}><i>✓</i>{portfolioOption(data, include)}</li>)}</ul>}</article>}{hasAnyText(data.collabRate, data.storyRate, data.storyPackRate, data.usageRate) && <div className="rateGrid">{hasText(data.collabRate) && <article><span>{portfolioText(data, "Reel en colaboración", "Collaborative Reel")}</span><b>{data.collabRate}</b></article>}{hasText(data.storyRate) && <article><span>{portfolioText(data, "1 historia con CTA", "1 Story with CTA")}</span><b>{data.storyRate}</b></article>}{hasText(data.storyPackRate) && <article><span>{portfolioText(data, "Pack de 3 historias", "3-story Pack")}</span><b>{data.storyPackRate}</b></article>}{hasText(data.usageRate) && <article><span>{portfolioText(data, "Derechos de pauta", "Paid Usage Rights")}</span><b>{data.usageRate}</b></article>}</div>}</div></section>}
-    {hasContact && <section className="webContact webSection" id="web-contact"><small>{portfolioText(data, "¿CREAMOS ALGO JUNTOS?", "SHALL WE CREATE SOMETHING TOGETHER?")}</small><h2>{portfolioText(data, "Tu marca tiene una historia. Hagámosla brillar.", "Your brand has a story. Let's make it shine.")}</h2>{hasText(data.whatsapp) && <a className="contactCta" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{portfolioText(data, "Trabajemos por WhatsApp", "Let's work on WhatsApp")} <span>↗</span></a>}{hasAnyText(data.email, data.whatsapp, data.instagram, data.tiktok) && <div className="contactGrid">{hasText(data.email) && <p><b>EMAIL</b><a href={emailLink(data.email)} data-analytics-target="email">{data.email}</a></p>}{hasText(data.whatsapp) && <p><b>WHATSAPP</b><a href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{data.whatsapp}</a></p>}{hasText(data.instagram) && <p><b>INSTAGRAM</b><a href={socialLink("instagram", data.instagram)} target="_blank" rel="noreferrer" data-analytics-target="instagram">{data.instagram}</a></p>}{hasText(data.tiktok) && <p><b>TIKTOK</b><a href={socialLink("tiktok", data.tiktok)} target="_blank" rel="noreferrer" data-analytics-target="tiktok">{data.tiktok}</a></p>}</div>}{hasText(data.availability) && <em className="contactNote">{data.availability}</em>}</section>}
-    <footer className="siteFooter">{hasText(data.name) && <strong>{data.name} ✦</strong>}{hasText(data.location) && <span>{data.location}</span>}<span>{portfolioText(data, "Hecho con brilla", "Made with brilla")}</span></footer>
+    {data.services.length > 0 && <section className="webServices webSection" id="web-services"><div className="webSectionTitle"><small>05 — {portfolioText(data, "SERVICIOS", "SERVICES")}</small><h2>{portfolioText(data, "Todo lo que puedo crear para tu marca.", "Everything I can create for your brand.")}</h2></div><div className="serviceCards">{data.services.map((service, index) => <article key={service}><span>{String(index + 1).padStart(2, "0")}</span><h3>{portfolioOption(data, service)}</h3><b><Icon glyph={icons[index % icons.length]} /></b></article>)}</div></section>}
+    {hasRates && <section className="webRates webSection" id="web-rates"><div className="webSectionTitle"><small>06 — {portfolioText(data, "TARIFAS", "RATES")}</small><h2>{portfolioText(data, "Inversión clara, sin sorpresas.", "Clear pricing, no surprises.")}</h2></div><div className="rateBoard">{(hasText(data.videoRate) || data.includes.length > 0) && <article className="rateHero"><small>{portfolioText(data, "EL FAVORITO ✦", "THE FAVORITE ✦")}</small><h3>Video UGC</h3>{hasText(data.videoRate) && <b>{data.videoRate}</b>}{data.includes.length > 0 && <ul>{data.includes.map((include) => <li key={include}><i><Icon glyph="✓" /></i>{portfolioOption(data, include)}</li>)}</ul>}</article>}{hasAnyText(data.collabRate, data.storyRate, data.storyPackRate, data.usageRate) && <div className="rateGrid">{hasText(data.collabRate) && <article><span>{portfolioText(data, "Reel en colaboración", "Collaborative Reel")}</span><b>{data.collabRate}</b></article>}{hasText(data.storyRate) && <article><span>{portfolioText(data, "1 historia con CTA", "1 Story with CTA")}</span><b>{data.storyRate}</b></article>}{hasText(data.storyPackRate) && <article><span>{portfolioText(data, "Pack de 3 historias", "3-story Pack")}</span><b>{data.storyPackRate}</b></article>}{hasText(data.usageRate) && <article><span>{portfolioText(data, "Derechos de pauta", "Paid Usage Rights")}</span><b>{data.usageRate}</b></article>}</div>}</div></section>}
+    {hasContact && <section className="webContact webSection" id="web-contact"><small>{portfolioText(data, "¿CREAMOS ALGO JUNTOS?", "SHALL WE CREATE SOMETHING TOGETHER?")}</small><h2>{portfolioText(data, "Tu marca tiene una historia. Hagámosla brillar.", "Your brand has a story. Let's make it shine.")}</h2>{hasText(data.whatsapp) && <a className="contactCta" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{portfolioText(data, "Trabajemos por WhatsApp", "Let's work on WhatsApp")} <span><Icon glyph="↗" /></span></a>}{hasAnyText(data.email, data.whatsapp, data.instagram, data.tiktok) && <div className="contactGrid">{hasText(data.email) && <p><b>EMAIL</b><a href={emailLink(data.email)} data-analytics-target="email">{data.email}</a></p>}{hasText(data.whatsapp) && <p><b>WHATSAPP</b><a href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{data.whatsapp}</a></p>}{hasText(data.instagram) && <p><b>INSTAGRAM</b><a href={socialLink("instagram", data.instagram)} target="_blank" rel="noreferrer" data-analytics-target="instagram">{data.instagram}</a></p>}{hasText(data.tiktok) && <p><b>TIKTOK</b><a href={socialLink("tiktok", data.tiktok)} target="_blank" rel="noreferrer" data-analytics-target="tiktok">{data.tiktok}</a></p>}</div>}{hasText(data.availability) && <em className="contactNote">{data.availability}</em>}</section>}
+    <footer className="siteFooter">{hasText(data.name) && <strong>{data.name} <Icon glyph="✦" /></strong>}{hasText(data.location) && <span>{data.location}</span>}<span>{portfolioText(data, "Hecho con brilla", "Made with brilla")}</span></footer>
   </div>;
 }
 
@@ -1228,17 +1290,17 @@ export function PortfolioDeck({ data, media, brands, schema, expanded = false }:
     <div ref={deck} className="deckTrack" role="slider" tabIndex={0} aria-label="Lámina visible del portafolio UGC" aria-valuemin={1} aria-valuemax={slideCount} aria-valuenow={active + 1} onScroll={onScroll} onWheel={onWheel} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onKeyDown={(e) => { if (e.key === "ArrowRight") go(active + 1); if (e.key === "ArrowLeft") go(active - 1); }}>
       {slides}
     </div>
-    <div className="deckControls" aria-label="Controles de presentación"><button onClick={() => go(active - 1)} disabled={active === 0}>←</button><div>{Array.from({ length: slideCount }, (_, i) => <button key={i} className={active === i ? "active" : ""} onClick={() => go(i)} aria-label={`Ir a lámina ${i + 1}`} />)}</div><span>{String(active + 1).padStart(2, "0")} / {slideCount}</span><button onClick={() => go(active + 1)} disabled={active === slideCount - 1}>→</button></div>
+    <div className="deckControls" aria-label="Controles de presentación"><button aria-label="Lámina anterior" onClick={() => go(active - 1)} disabled={active === 0}><Icon glyph="←" /></button><div>{Array.from({ length: slideCount }, (_, i) => <button key={i} className={active === i ? "active" : ""} onClick={() => go(i)} aria-label={`Ir a lámina ${i + 1}`} />)}</div><span>{String(active + 1).padStart(2, "0")} / {slideCount}</span><button aria-label="Lámina siguiente" onClick={() => go(active + 1)} disabled={active === slideCount - 1}><Icon glyph="→" /></button></div>
   </div>;
 }
 
 type SlideProps = { data: Portfolio; active: number; index: number; mediaFor: (category: string, count: number, offset?: number) => Array<Media | null>; schema: TemplateSchema; portrait: Media | null; contactVisual: Media | null };
 function IntroSlide({ data, active, index, portrait }: SlideProps) { return <section className={`deckSlide intro ${active === index ? "isActive" : ""}`}><div className="introCopy"><span>{portfolioText(data, "CREADORA DE CONTENIDO UGC", "UGC CONTENT CREATOR")}</span>{hasText(data.title) && <h1>{data.title}</h1>}{hasText(data.bio) && <p>{data.bio}</p>}{hasText(data.location) && <small>{data.location}</small>}</div>{portrait && <MediaCard item={portrait} label={portfolioText(data, "TU RETRATO", "YOUR PORTRAIT")} index={0} />}</section>; }
-function GallerySlide({ active, index, mediaFor, schema, category, title, icon }: SlideProps & { category: string; title: string; icon?: string }) { const items = mediaFor(category, category === "Fotografía" ? schema.photoLimit : schema.categoryLimit); return <section className={`deckSlide gallery ${active === index ? "isActive" : ""}`}><div className="slideTitle">{icon && <i>{icon}</i>}<h2>{title}</h2></div><div className={`galleryRow count-${items.length}`} style={{ "--media-count": items.length } as CSSProperties}>{items.map((item, i) => <MediaCard key={item?.id ?? `${index}-${i}`} item={item} label={category} index={i} />)}</div></section>; }
+function GallerySlide({ active, index, mediaFor, schema, category, title, icon }: SlideProps & { category: string; title: string; icon?: string }) { const items = mediaFor(category, category === "Fotografía" ? schema.photoLimit : schema.categoryLimit); return <section className={`deckSlide gallery ${active === index ? "isActive" : ""}`}><div className="slideTitle">{icon && <i><Icon glyph={icon} /></i>}<h2>{title}</h2></div><div className={`galleryRow count-${items.length}`} style={{ "--media-count": items.length } as CSSProperties}>{items.map((item, i) => <MediaCard key={item?.id ?? `${index}-${i}`} item={item} label={category} index={i} />)}</div></section>; }
 function PhotoSlide({ data, active, index, mediaFor, schema }: SlideProps) { const items = mediaFor("Fotografía", schema.photoLimit); return <section className={`deckSlide photoMosaic count-${items.length} ${active === index ? "isActive" : ""}`}><h2>{portfolioText(data, "Fotografía UGC", "UGC Photography")}</h2><div>{items.map((item, i) => <MediaCard key={item?.id ?? i} item={item} label={portfolioOption(data, data.niches[i % Math.max(1, data.niches.length)] || "UGC")} index={i} />)}</div></section>; }
 function BrandsSlide({ data, brands, active, index }: { data: Portfolio; brands: BrandAsset[]; active: number; index: number }) { return <section className={`deckSlide brands ${active === index ? "isActive" : ""}`}><small>{portfolioText(data, "EXPERIENCIA", "EXPERIENCE")}</small><h2>{portfolioText(data, "Marcas con las que he trabajado", "Brands I have worked with")}</h2><div>{brands.map((brand) => <article key={brand.id}><img src={brand.url} alt={`${portfolioText(data, "Logo de", "Logo for")} ${brand.name}`} /><span>{brand.name}</span></article>)}</div></section>; }
 function AudienceSlide({ data, active, index }: SlideProps) { const countries = data.topCountries.split("·").map((item) => item.trim()).filter(Boolean); return <section className={`deckSlide audience ${active === index ? "isActive" : ""}`}><div><small>{portfolioText(data, "MI AUDIENCIA", "MY AUDIENCE")}</small><h2>{portfolioText(data, "Mi comunidad.", "My community.")}</h2>{hasText(data.womenAudience) && <div className="audienceRing"><strong>{data.womenAudience}</strong><span>{portfolioText(data, "mujeres", "women")}</span></div>}{hasAnyText(data.followers, data.monthlyViews) && <div className="audienceStats">{hasText(data.followers) && <span><b>{data.followers}</b>{portfolioText(data, "seguidores", "followers")}</span>}{hasText(data.monthlyViews) && <span><b>{data.monthlyViews}</b>{portfolioText(data, "vistas / mes", "views / month")}</span>}</div>}</div>{(countries.length > 0 || hasAnyText(data.instagram, data.name) || data.niches.length > 0) && <div className="countryPanel">{countries.length > 0 && <><h3>{portfolioText(data, "Principales ubicaciones", "Top locations")}</h3>{countries.map((country, i) => <p key={country}><span>{country}</span><i style={{ width: `${Math.max(14, 86 - i * 17)}%` }} /></p>)}</>}{hasAnyText(data.instagram, data.name) || data.niches.length > 0 ? <div className="socialCard">{hasText(data.instagram) && <b>{data.instagram}</b>}{hasText(data.name) && <span>{data.name}</span>}{data.niches.length > 0 && <small>{portfolioOptions(data, data.niches).join(" · ")}</small>}</div> : null}</div>}</section>; }
-function RateSlide({ data, active, index, secondary }: SlideProps & { secondary: boolean }) { return <section className={`deckSlide rates ${secondary ? "secondary" : ""} ${active === index ? "isActive" : ""}`}><div className="rateCopy"><small>{portfolioText(data, "TARIFAS", "RATES")}</small>{secondary ? <><h2>{portfolioText(data, "Historias y pauta", "Stories and paid usage")}</h2>{hasText(data.collabRate) && <Rate name={portfolioText(data, "Reel en colaboración", "Collaborative Reel")} price={data.collabRate} />}{hasText(data.storyRate) && <Rate name={portfolioText(data, "1 historia con CTA", "1 Story with CTA")} price={data.storyRate} />}{hasText(data.storyPackRate) && <Rate name={portfolioText(data, "Pack de 3 historias", "3-story Pack")} price={data.storyPackRate} />}{hasText(data.usageRate) && <Rate name={portfolioText(data, "Derechos de pauta / mes", "Paid Usage Rights / month")} price={data.usageRate} />}</> : <><h2>Video UGC</h2>{data.includes.length > 0 && <><p>{portfolioText(data, "Incluye:", "Includes:")}</p><ul>{data.includes.map((item) => <li key={item}>✓ {portfolioOption(data, item)}</li>)}</ul></>}{hasText(data.videoRate) && <strong className="mainPrice">{data.videoRate}</strong>}</>}</div><div className="rateVisual"><span>UGC</span><i>✦</i><b>{secondary ? "SOCIAL" : "CREATE"}</b></div></section>; }
+function RateSlide({ data, active, index, secondary }: SlideProps & { secondary: boolean }) { return <section className={`deckSlide rates ${secondary ? "secondary" : ""} ${active === index ? "isActive" : ""}`}><div className="rateCopy"><small>{portfolioText(data, "TARIFAS", "RATES")}</small>{secondary ? <><h2>{portfolioText(data, "Historias y pauta", "Stories and paid usage")}</h2>{hasText(data.collabRate) && <Rate name={portfolioText(data, "Reel en colaboración", "Collaborative Reel")} price={data.collabRate} />}{hasText(data.storyRate) && <Rate name={portfolioText(data, "1 historia con CTA", "1 Story with CTA")} price={data.storyRate} />}{hasText(data.storyPackRate) && <Rate name={portfolioText(data, "Pack de 3 historias", "3-story Pack")} price={data.storyPackRate} />}{hasText(data.usageRate) && <Rate name={portfolioText(data, "Derechos de pauta / mes", "Paid Usage Rights / month")} price={data.usageRate} />}</> : <><h2>Video UGC</h2>{data.includes.length > 0 && <><p>{portfolioText(data, "Incluye:", "Includes:")}</p><ul>{data.includes.map((item) => <li key={item}><Icon glyph="✓" /> {portfolioOption(data, item)}</li>)}</ul></>}{hasText(data.videoRate) && <strong className="mainPrice">{data.videoRate}</strong>}</>}</div><div className="rateVisual"><span>UGC</span><i><Icon glyph="✦" /></i><b>{secondary ? "SOCIAL" : "CREATE"}</b></div></section>; }
 function Rate({ name, price }: { name: string; price: string }) { return <div className="rateLine"><span>{name}</span><strong>{price}</strong></div>; }
 function ContactSlide({ data, active, index, contactVisual }: SlideProps) { return <section className={`deckSlide contact ${active === index ? "isActive" : ""}`}>{contactVisual && <div className="phoneFrame"><MediaCard item={contactVisual} label="LET'S CREATE" index={0} /></div>}<div className="contactCopy">{data.services.length > 0 && <small>{portfolioOptions(data, data.services).join(" · ")}</small>}{data.contentTypes.length > 0 && <h2>{portfolioOptions(data, data.contentTypes).join(" · ")}</h2>}{data.clientTypes.length > 0 && <div className="deckClientTypes">{data.clientTypes.map((type) => <span key={type}>{portfolioOption(data, type)}</span>)}</div>}{hasText(data.whatsapp) && <a className="deckWhatsappCta" href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp"><em>{portfolioText(data, "¡Trabajemos juntos!", "Let's work together!")}</em></a>}{hasText(data.whatsapp) && <p><b>WhatsApp</b><a href={whatsappLink(data.whatsapp)} target="_blank" rel="noreferrer" data-analytics-target="whatsapp">{data.whatsapp}</a></p>}{hasText(data.email) && <p><b>Email</b><a href={emailLink(data.email)} data-analytics-target="email">{data.email}</a></p>}{hasText(data.instagram) && <p><b>Instagram</b><a href={socialLink("instagram", data.instagram)} target="_blank" rel="noreferrer" data-analytics-target="instagram">{data.instagram}</a></p>}{hasText(data.tiktok) && <p><b>TikTok</b><a href={socialLink("tiktok", data.tiktok)} target="_blank" rel="noreferrer" data-analytics-target="tiktok">{data.tiktok}</a></p>}{hasText(data.availability) && <span>{data.availability}</span>}</div></section>; }
-function MediaCard({ item, label, index }: { item: Media | null; label: string; index: number }) { const framed = item?.type === "video" && item.framed; return <article className={`deckMedia media-${index} ${framed ? "videoCard" : item?.type === "video" ? "videoPlain" : ""}`}>{item ? item.type === "video" ? <>{framed && <i className="videoNotch" />}<video src={item.url} poster={item.previewUrl} muted playsInline controls preload="metadata" /><div className="videoSocials">{item.instagram && <a href={item.instagram} target="_blank" rel="noreferrer" aria-label="Ver en Instagram" data-analytics-target="instagram">IG</a>}{item.tiktok && <a href={item.tiktok} target="_blank" rel="noreferrer" aria-label="Ver en TikTok" data-analytics-target="tiktok">TK</a>}</div></> : <img src={item.url} alt={`Pieza UGC de ${label}`} loading="lazy" /> : <div className="mediaPlaceholder"><span>{label}</span><b>{String(index + 1).padStart(2, "0")}</b><i>▶</i></div>}</article>; }
+function MediaCard({ item, label, index }: { item: Media | null; label: string; index: number }) { const framed = item?.type === "video" && item.framed; return <article className={`deckMedia media-${index} ${framed ? "videoCard" : item?.type === "video" ? "videoPlain" : ""}`}>{item ? item.type === "video" ? <>{framed && <i className="videoNotch" />}<video src={item.url} poster={item.previewUrl} muted playsInline controls preload="metadata" /><div className="videoSocials">{item.instagram && <a href={item.instagram} target="_blank" rel="noreferrer" aria-label="Ver en Instagram" data-analytics-target="instagram">IG</a>}{item.tiktok && <a href={item.tiktok} target="_blank" rel="noreferrer" aria-label="Ver en TikTok" data-analytics-target="tiktok">TK</a>}</div></> : <img src={item.url} alt={`Pieza UGC de ${label}`} loading="lazy" /> : <div className="mediaPlaceholder"><span>{label}</span><b>{String(index + 1).padStart(2, "0")}</b><i><Icon glyph="▶" /></i></div>}</article>; }

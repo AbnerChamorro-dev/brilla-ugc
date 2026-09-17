@@ -1,12 +1,16 @@
 "use client";
 
+import { Icon } from "../components/brilla-icon";
+
+
 /* Account navigation intentionally uses plain links across authentication redirects. */
 /* eslint-disable @next/next/no-html-link-for-pages */
 
-import { CSSProperties, useCallback, useEffect, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { LegalConsentCheckbox } from "../components/legal-consent-checkbox";
 import { LegalConsentGate } from "../components/legal-consent-gate";
+import { portfolioDraftKey, portfolioAssetDatabase } from "../lib/portfolio-storage";
 import { rememberAuthRedirect } from "../lib/auth-redirect";
 import {
   clearPendingLegalConsent,
@@ -64,6 +68,7 @@ type ConfirmAction = "unpublish" | "delete" | null;
 
 const localPortfolioKeys = [
   "brilla-portfolio-draft-v2",
+  "brilla-portfolio-draft-v3",
   "brilla-post-auth-step-v1",
   "brilla-pending-cloud-upload-v1",
   "brilla-published-v1",
@@ -136,9 +141,11 @@ function formattedDate(value?: string) {
   }).format(date);
 }
 
-function clearLocalPortfolio() {
+function clearLocalPortfolio(userId: string) {
+  window.localStorage.removeItem(portfolioDraftKey(userId));
   for (const key of localPortfolioKeys) window.localStorage.removeItem(key);
   try {
+    window.indexedDB.deleteDatabase(portfolioAssetDatabase(userId));
     window.indexedDB.deleteDatabase("brilla-assets-v1");
   } catch {
     // Cloud data is already deleted even when local browser storage is unavailable.
@@ -154,6 +161,7 @@ export default function AccountPage() {
   const [notificationPreferencesExist, setNotificationPreferencesExist] = useState(false);
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [portfolioLoadFailed, setPortfolioLoadFailed] = useState(false);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -167,37 +175,40 @@ export default function AccountPage() {
   const [legalBusy, setLegalBusy] = useState(false);
   const [legalError, setLegalError] = useState("");
 
+  const dashboardAccountRef = useRef<string | null>(null);
   const loadDashboard = useCallback(async (account: User) => {
+    dashboardAccountRef.current = account.id;
+    setPortfolioLoadFailed(false);
     setDashboardLoading(true);
     setError("");
     const supabase = getSupabaseBrowserClient();
-    const [portfolioResult, mediaResult, analyticsResult, preferencesResult] = await Promise.all([
-      supabase
-        .from("creator_portfolios")
-        .select("id,content,status,slug,created_at,updated_at")
-        .eq("user_id", account.id)
-        .maybeSingle(),
-      supabase
-        .from("creator_media")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", account.id),
+    const portfolioResult = await supabase.from("creator_portfolios")
+      .select("id,content,status,slug,created_at,updated_at").eq("user_id", account.id)
+      .abortSignal(AbortSignal.timeout(15000)).maybeSingle();
+    if (dashboardAccountRef.current !== account.id) return;
+    if (portfolioResult.error) {
+      setPortfolioLoadFailed(true);
+      setError("No pudimos cargar tu portafolio. Reintenta la carga.");
+      setDashboardLoading(false);
+      return;
+    }
+    setPortfolio((portfolioResult.data as CreatorPortfolio | null) ?? null);
+    setDashboardLoading(false);
+    const [mediaResult, analyticsResult, preferencesResult] = await Promise.all([
+      supabase.from("creator_media").select("id", { count: "exact", head: true }).eq("user_id", account.id),
       supabase.rpc("get_my_portfolio_analytics"),
-      supabase
-        .from("creator_notification_preferences")
-        .select("email_digest_enabled,digest_frequency")
-        .eq("user_id", account.id)
-        .maybeSingle(),
+      supabase.from("creator_notification_preferences").select("email_digest_enabled,digest_frequency").eq("user_id", account.id).maybeSingle(),
     ]);
-
-    if (portfolioResult.error || mediaResult.error || analyticsResult.error || preferencesResult.error) {
-      setError("No pudimos cargar tu panel. Tu portafolio sigue seguro; inténtalo nuevamente.");
-    } else {
-      setPortfolio((portfolioResult.data as CreatorPortfolio | null) ?? null);
-      setMediaCount(mediaResult.count ?? 0);
-      setAnalytics(normalizedAnalytics(analyticsResult.data));
+    if (dashboardAccountRef.current !== account.id) return;
+    if (!mediaResult.error) setMediaCount(mediaResult.count ?? 0);
+    if (!analyticsResult.error) setAnalytics(normalizedAnalytics(analyticsResult.data));
+    if (!preferencesResult.error) {
       const savedPreferences = preferencesResult.data as NotificationPreferences | null;
       setNotificationPreferences(savedPreferences ?? { email_digest_enabled: false, digest_frequency: "weekly" });
       setNotificationPreferencesExist(Boolean(savedPreferences));
+    }
+    if (mediaResult.error || analyticsResult.error || preferencesResult.error) {
+      setError("Tu portafolio está disponible. Algunos datos del panel no pudieron actualizarse.");
     }
     setDashboardLoading(false);
   }, []);
@@ -205,6 +216,7 @@ export default function AccountPage() {
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
     let active = true;
+    let acceptedId: string | null = null;
     const initialTimer = window.setTimeout(() => {
       if (!active) return;
       setChecking(false);
@@ -212,6 +224,8 @@ export default function AccountPage() {
     }, 8000);
 
     const clearAccount = () => {
+      acceptedId = null;
+      dashboardAccountRef.current = null;
       setUser(null);
       setChecking(false);
       setLegalConsentRequired(false);
@@ -223,9 +237,13 @@ export default function AccountPage() {
     };
 
     const acceptAccount = async (account: User) => {
+      if (!active || acceptedId === account.id) return;
+      acceptedId = account.id;
+      dashboardAccountRef.current = account.id;
+      setPortfolio(null);
       setUser(account);
       const consent = await resolveCurrentLegalConsent(supabase, account.id);
-      if (!active) return;
+      if (!active || acceptedId !== account.id) return;
       setChecking(false);
       if (!consent.accepted) {
         setLegalConsentRequired(true);
@@ -264,8 +282,11 @@ export default function AccountPage() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!active) return;
       const account = session?.user ?? null;
-      if (account) void acceptAccount(account);
-      else clearAccount();
+      window.setTimeout(() => {
+        if (!active) return;
+        if (account) void acceptAccount(account);
+        else clearAccount();
+      }, 0);
     });
 
     return () => {
@@ -426,7 +447,7 @@ export default function AccountPage() {
       return;
     }
 
-    clearLocalPortfolio();
+    clearLocalPortfolio(user.id);
     setPortfolio(null);
     setMediaCount(0);
     setAnalytics(emptyAnalytics);
@@ -448,16 +469,16 @@ export default function AccountPage() {
     return <main className="accountPage">
       <section className="accountStory">
         <a className="accountBrand" href="/">brilla<span>•</span></a>
-        <div className="accountStoryCopy"><span>✦ TU PORTAFOLIO, SIEMPRE CONTIGO</span><h1>Tu trabajo queda<br /><em>guardado y listo.</em></h1><p>Entra con Google para continuar tu portafolio desde cualquier dispositivo.</p></div>
+        <div className="accountStoryCopy"><span><Icon glyph="✦" /> TU PORTAFOLIO, SIEMPRE CONTIGO</span><h1>Tu trabajo queda<br /><em>guardado y listo.</em></h1><p>Entra con Google para continuar tu portafolio desde cualquier dispositivo.</p></div>
         <div className="accountProof"><article><b>01</b><span><strong>Un solo acceso</strong><small>Sin otra contraseña que recordar.</small></span></article><article><b>02</b><span><strong>Progreso protegido</strong><small>Tu borrador permanece en este dispositivo.</small></span></article><article><b>03</b><span><strong>Sesión segura</strong><small>Google confirma tu identidad.</small></span></article></div>
         <small className="accountFoot">Brilla UGC · Hecho para creadoras</small>
       </section>
       <section className="accountAccess"><div className="accountCard">
         <span className="accountKicker">UN ACCESO, CERO COMPLICACIONES</span><h2>Continúa con Google.</h2><p className="accountLead">No necesitas crear otra contraseña. Usaremos tu cuenta de Google únicamente para identificarte y proteger tu portafolio.</p>
-        <div className="accountProgressPromise"><span>✓</span><p><strong>No perderás tu progreso</strong><small>Cuando vuelvas, continuarás exactamente donde quedaste.</small></p></div>
+        <div className="accountProgressPromise"><span><Icon glyph="✓" /></span><p><strong>No perderás tu progreso</strong><small>Cuando vuelvas, continuarás exactamente donde quedaste.</small></p></div>
         {error && <p className="accountNotice error" role="alert">{error}</p>}
         <LegalConsentCheckbox id="account-login-legal-consent" checked={loginConsentChecked} onChange={setLoginConsentChecked} />
-        <button className="googleAccountButton" type="button" onClick={signInWithGoogle} disabled={busy || !loginConsentChecked}><b>G</b>{busy ? "Abriendo Google…" : "Continuar con Google"}<span>→</span></button>
+        <button className="googleAccountButton" type="button" onClick={signInWithGoogle} disabled={busy || !loginConsentChecked}><b>G</b>{busy ? "Abriendo Google…" : "Continuar con Google"}<span><Icon glyph="→" /></span></button>
         <a className="accountBackLink" href="/crear">Volver al editor</a>
         <p className="accountLegal">Google compartirá con Brilla tu nombre, correo y foto de perfil para identificar tu cuenta. No tendremos acceso a tu contraseña.</p>
       </div></section>
@@ -487,21 +508,21 @@ export default function AccountPage() {
     </header>
 
     <section className="dashboardShell">
-      <div className="dashboardIntro"><div><span>✦ PANEL DE LA CREADORA</span><h1>Hola, {displayName.split(" ")[0]}.<br /><em>Tu trabajo está aquí.</em></h1></div><a className="dashboardCreateButton" href="/crear">Editar portafolio <span>→</span></a></div>
+      <div className="dashboardIntro"><div><span><Icon glyph="✦" /> PANEL DE LA CREADORA</span><h1>Hola, {displayName.split(" ")[0]}.<br /><em>Tu trabajo está aquí.</em></h1></div><a className="dashboardCreateButton" href="/crear">Editar portafolio <span><Icon glyph="→" /></span></a></div>
 
-      {(error || success) && <div className={`dashboardNotice ${error ? "error" : "success"}`} role={error ? "alert" : "status"}><span>{error ? "!" : "✓"}</span><p>{error || success}</p><button type="button" aria-label="Cerrar aviso" onClick={() => { setError(""); setSuccess(""); }}>×</button></div>}
+      {(error || success) && <div className={`dashboardNotice ${error ? "error" : "success"}`} role={error ? "alert" : "status"}><span>{error ? "!" : <><Icon glyph="✓" /></>}</span><p>{error || success}</p><button type="button" aria-label="Cerrar aviso" onClick={() => { setError(""); setSuccess(""); }}><Icon glyph="×" /></button></div>}
 
-      {dashboardLoading ? <div className="dashboardLoadingCard"><div className="accountLoading"><i />Cargando tu portafolio…</div></div> : !portfolio ? <section className="dashboardEmpty">
-        <div className="emptySpark">✦</div><span>EMPIEZA CUANDO QUIERAS</span><h2>Tu primer portafolio<br /><em>está a un paso.</em></h2><p>Elige una plantilla, completa tu identidad y Brilla guardará todo en tu cuenta.</p><a href="/crear">Crear mi portafolio <b>→</b></a>
+      {dashboardLoading ? <div className="dashboardLoadingCard"><div className="accountLoading"><i />Cargando tu portafolio…</div></div> : portfolioLoadFailed ? <section className="dashboardEmpty"><h2>No pudimos recuperar tu portafolio</h2><p>Reintenta la conexión para continuar con tus datos.</p><button type="button" onClick={() => void loadDashboard(user)}>Reintentar</button></section> : !portfolio ? <section className="dashboardEmpty">
+        <div className="emptySpark"><Icon glyph="✦" /></div><span>EMPIEZA CUANDO QUIERAS</span><h2>Tu primer portafolio<br /><em>está a un paso.</em></h2><p>Elige una plantilla, completa tu identidad y Brilla guardará todo en tu cuenta.</p><a href="/crear">Crear mi portafolio <b><Icon glyph="→" /></b></a>
       </section> : <>
         <section className="dashboardGrid">
           <article className="portfolioOverview">
-            <div className="portfolioOverviewTop"><span className={`portfolioStatus ${portfolio.status}`}>● {statusLabel}</span><small>{templateLabel}</small></div>
+            <div className="portfolioOverviewTop"><span className={`portfolioStatus ${portfolio.status}`}><Icon glyph="●" /> {statusLabel}</span><small>{templateLabel}</small></div>
             <div className="portfolioMiniPreview"><span>UGC · {content.location || "TU CIUDAD"}</span><h2>{content.title || "Tu talento merece una presentación increíble."}</h2><p>{content.bio || "Tu historia, tu contenido y tus mejores colaboraciones en un solo lugar."}</p><div><b>{content.name || displayName}</b><small>{portfolio.slug ? `brillaugc.com/${portfolio.slug}` : "Enlace pendiente"}</small></div></div>
             <div className="portfolioActions">
-              <a className="primary" href="/crear">Editar <span>↗</span></a>
-              {isPublished ? <a href={`/${portfolio.slug}`} target="_blank" rel="noreferrer">Ver publicado <span>↗</span></a> : <a href="/crear">Vista previa <span>↗</span></a>}
-              <button type="button" onClick={copyPublishedLink} disabled={!isPublished}>{copied ? "Enlace copiado ✓" : "Copiar enlace"}<span>⌘</span></button>
+              <a className="primary" href="/crear">Editar <span><Icon glyph="↗" /></span></a>
+              {isPublished ? <a href={`/${portfolio.slug}`} target="_blank" rel="noreferrer">Ver publicado <span><Icon glyph="↗" /></span></a> : <a href="/crear">Vista previa <span><Icon glyph="↗" /></span></a>}
+              <button type="button" onClick={copyPublishedLink} disabled={!isPublished}>{copied ? <>Enlace copiado <Icon glyph="✓" /></> : "Copiar enlace"}<span><Icon glyph="⌘" /></span></button>
             </div>
           </article>
 
@@ -509,14 +530,14 @@ export default function AccountPage() {
             <div className="completionRing" style={{ "--completion": `${completion * 3.6}deg` } as CSSProperties}><span>{completion}%</span></div>
             <span>PERFIL DEL PORTAFOLIO</span><h2>{completion === 100 ? "Todo listo para brillar." : "Completa lo que falta."}</h2><p>Cada detalle ayuda a que una marca entienda rápidamente lo que puedes ofrecer.</p>
             <ul>
-              <li className={completionChecks[0] ? "done" : ""}><i>{completionChecks[0] ? "✓" : "1"}</i>Identidad completa</li>
-              <li className={completionChecks[1] ? "done" : ""}><i>{completionChecks[1] ? "✓" : "2"}</i>Contenido cargado</li>
-              <li className={completionChecks[2] ? "done" : ""}><i>{completionChecks[2] ? "✓" : "3"}</i>Métricas declaradas</li>
-              <li className={completionChecks[3] ? "done" : ""}><i>{completionChecks[3] ? "✓" : "4"}</i>Tarifas agregadas</li>
-              <li className={completionChecks[4] ? "done" : ""}><i>{completionChecks[4] ? "✓" : "5"}</i>Contacto disponible</li>
-              <li className={completionChecks[5] ? "done" : ""}><i>{completionChecks[5] ? "✓" : "6"}</i>Enlace elegido</li>
+              <li className={completionChecks[0] ? "done" : ""}><i>{completionChecks[0] ? <><Icon glyph="✓" /></> : "1"}</i>Identidad completa</li>
+              <li className={completionChecks[1] ? "done" : ""}><i>{completionChecks[1] ? <><Icon glyph="✓" /></> : "2"}</i>Contenido cargado</li>
+              <li className={completionChecks[2] ? "done" : ""}><i>{completionChecks[2] ? <><Icon glyph="✓" /></> : "3"}</i>Métricas declaradas</li>
+              <li className={completionChecks[3] ? "done" : ""}><i>{completionChecks[3] ? <><Icon glyph="✓" /></> : "4"}</i>Tarifas agregadas</li>
+              <li className={completionChecks[4] ? "done" : ""}><i>{completionChecks[4] ? <><Icon glyph="✓" /></> : "5"}</i>Contacto disponible</li>
+              <li className={completionChecks[5] ? "done" : ""}><i>{completionChecks[5] ? <><Icon glyph="✓" /></> : "6"}</i>Enlace elegido</li>
             </ul>
-            <a href="/crear">Continuar completando →</a>
+            <a href="/crear">Continuar completando <Icon glyph="→" /></a>
           </aside>
         </section>
 
@@ -528,7 +549,7 @@ export default function AccountPage() {
         </section>
 
         <section className="analyticsPanel" aria-labelledby="analytics-title">
-          <header><div><span>✦ ACTIVIDAD REAL</span><h2 id="analytics-title">Lo que hacen las marcas.</h2><p>Brilla cuenta actividad anónima y evita repetir una misma acción durante 30 minutos.</p></div><div><small>ÚLTIMA VISITA</small><strong>{formattedDate(analytics.last_view_at ?? undefined)}</strong></div></header>
+          <header><div><span><Icon glyph="✦" /> ACTIVIDAD REAL</span><h2 id="analytics-title">Lo que hacen las marcas.</h2><p>Brilla cuenta actividad anónima y evita repetir una misma acción durante 30 minutos.</p></div><div><small>ÚLTIMA VISITA</small><strong>{formattedDate(analytics.last_view_at ?? undefined)}</strong></div></header>
           <div className="analyticsCards">
             <article><span>30 DÍAS</span><strong>{analytics.views_last_30_days}</strong><small>visitas al portafolio</small></article>
             <article><span>CORREO</span><strong>{analytics.clicks.email}</strong><small>clics para escribirte</small></article>
@@ -556,7 +577,7 @@ export default function AccountPage() {
     </section>
 
     {confirmAction && <div className="dashboardModal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setConfirmAction(null); }}><section role="dialog" aria-modal="true" aria-labelledby="dashboard-confirm-title">
-      <button className="modalClose" type="button" aria-label="Cerrar" onClick={() => setConfirmAction(null)} disabled={busy}>×</button>
+      <button className="modalClose" type="button" aria-label="Cerrar" onClick={() => setConfirmAction(null)} disabled={busy}><Icon glyph="×" /></button>
       <span className={confirmAction === "delete" ? "danger" : ""}>{confirmAction === "delete" ? "!" : "↙"}</span>
       <small>{confirmAction === "delete" ? "ACCIÓN PERMANENTE" : "CAMBIO REVERSIBLE"}</small>
       <h2 id="dashboard-confirm-title">{confirmAction === "delete" ? "¿Eliminar tu portafolio?" : "¿Despublicar por ahora?"}</h2>
