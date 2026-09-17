@@ -119,7 +119,13 @@ for (const [engine, browserType, executablePath] of [
   assert.equal(await name.inputValue(),'','signed-out visitor must not see the previous account');
   await context.close();
   const guest=await browser.newContext({viewport:{width:320,height:740},isMobile:true,hasTouch:true});const guestPage=await guest.newPage();
-  await guestPage.goto(base);await guestPage.getByRole('link',{name:'Iniciar sesión',exact:true}).waitFor();
+  await guestPage.goto(base);const homeSignIn=guestPage.getByRole('button',{name:'Iniciar sesión',exact:true});await homeSignIn.waitFor();
+  await homeSignIn.click();await guestPage.getByRole('dialog',{name:'Inicia sesión en Brilla'}).waitFor();
+  assert.equal(await guestPage.getByRole('button',{name:'Continuar con Google'}).isDisabled(),true);
+  await guestPage.locator('label[for="home-login-legal-consent"]').click();
+  assert.equal(await guestPage.getByRole('button',{name:'Continuar con Google'}).isEnabled(),true);
+  await guestPage.getByRole('button',{name:'Cerrar inicio de sesión'}).click();
+  assert.equal(await guestPage.getByRole('dialog').count(),0);
   assert.equal(await guestPage.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,'320px home overflows');
   // First-time signup claims only the guest draft staged for this login.
   let created=null, inserts=0;

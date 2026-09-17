@@ -29,6 +29,26 @@ test("keeps the Brilla product and native Next.js routes", async () => {
   }
 });
 
+test("opens Google sign-in in a modal from the home navigation", async () => {
+  const [home, accountLink, styles] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/home-account-link.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(home, /<HomeAccountLink\s*\/>/);
+  assert.match(accountLink, /<button className="homeAccountLink"[\s\S]*>Iniciar sesión<\/button>/);
+  assert.match(accountLink, /role="dialog" aria-modal="true"/);
+  assert.match(accountLink, /<LegalConsentCheckbox id="home-login-legal-consent"/);
+  assert.match(accountLink, /signInWithOAuth/);
+  assert.match(accountLink, /provider:\s*"google"/);
+  assert.match(accountLink, /rememberAuthRedirect\("\/crear"\)/);
+  assert.match(accountLink, /disabled=\{busy \|\| !consentChecked\}/);
+  assert.match(accountLink, /if \(signedIn\) return <Link className="homeAccountLink" href="\/crear">Mi portafolio<\/Link>/);
+  assert.match(styles, /\.homeAuthOverlay/);
+  assert.match(styles, /\.homeAuthModal/);
+});
+
 test("offers six narrative UGC portfolio experiences wired to the editor", async () => {
   const [editor, experiences, styles, additions, pdf] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
