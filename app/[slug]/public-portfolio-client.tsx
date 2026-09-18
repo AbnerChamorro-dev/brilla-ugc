@@ -1,8 +1,5 @@
 "use client";
 
-/* The public portfolio keeps a plain external-style link back to Brilla. */
-/* eslint-disable @next/next/no-html-link-for-pages */
-
 import {
   PortfolioDeck,
   WebsitePortfolio,
@@ -79,7 +76,6 @@ export default function PublicPortfolioClient({ slug, data, media, brands }: { s
   }, [slug]);
 
   return <main ref={page} className={`publicPortfolioPage public-${data.format}`}>
-    <a className="publicBrillaBadge" href="/" aria-label="Crear mi portafolio con Brilla">Hecho con <strong>brilla<span>•</span></strong></a>
     {data.format === "presentation"
       ? <PortfolioDeck data={data} media={media} brands={brands} schema={schema} expanded />
       : <WebsitePortfolio data={data} media={media} brands={brands} schema={schema} expanded />}

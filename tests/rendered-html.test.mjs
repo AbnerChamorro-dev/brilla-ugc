@@ -97,8 +97,7 @@ test("keeps the published creator feed readable without changing saved portfolio
   assert.match(feedStyles, /Published feed portfolios use readable fixed type sizes/);
   assert.match(feedStyles, /grid-template-areas:"identity cta" "nav nav"/);
   assert.match(feedStyles, /\.creatorFeed\.expanded \.feedNav nav\{grid-area:nav;display:flex/);
-  assert.match(publicStyles, /\.publicPortfolioPage\{padding-bottom:52px\}/);
-  assert.match(publicStyles, /\.publicBrillaBadge\{position:absolute/);
+  assert.doesNotMatch(publicStyles, /publicBrillaBadge/);
 });
 
 test("turns the mobile editor into an app-like wizard with a preview sheet", async () => {

@@ -1,0 +1,129 @@
+/* Published-page type floor. Imported last so it wins over each template's cqw scale and mobile rem rules. */
+
+/* Readable type floor for the published Creator Feed (desktop and mobile). The compact editor preview keeps its cqw scale. */
+.creatorFeed.expanded .feedIdentity strong{font-size:clamp(.9rem,1.1vw,1rem)}
+.creatorFeed.expanded .feedIdentity small{font-size:.78rem}
+.creatorFeed.expanded .feedAvatar{font-size:.78rem}
+.creatorFeed.expanded .feedNav nav a{font-size:.88rem}
+.creatorFeed.expanded .feedNavCta{min-height:44px;padding:12px 18px;font-size:.88rem}
+.creatorFeed.expanded .feedStatus{gap:8px;padding:9px 13px;font-size:.8rem}
+.creatorFeed.expanded .feedStatus i{width:8px;height:8px;box-shadow:0 0 0 4px #47a76a1c}
+.creatorFeed.expanded .feedHero:after{font-size:.68rem}
+.creatorFeed.expanded .feedHeroLead{font-size:clamp(1rem,1.15vw,1.1rem);line-height:1.65}
+.creatorFeed.expanded .feedHeroTags{gap:8px}
+.creatorFeed.expanded .feedHeroTags span{padding:8px 12px;font-size:.8rem}
+.creatorFeed.expanded .feedHeroActions{gap:12px}
+.creatorFeed.expanded .feedHeroActions>a{min-height:46px;padding:14px 20px;font-size:.92rem}
+.creatorFeed.expanded .feedSocialLinks a{width:44px;height:44px;font-size:.8rem}
+.creatorFeed.expanded .feedProfileBadge{gap:10px;padding:12px 14px}
+.creatorFeed.expanded .feedProfileBadge>span{width:36px;height:36px;font-size:.85rem}
+.creatorFeed.expanded .feedProfileBadge b{font-size:.9rem}
+.creatorFeed.expanded .feedProfileBadge small{font-size:.74rem}
+.creatorFeed.expanded .feedKicker,.creatorFeed.expanded .feedStoryLabel,.creatorFeed.expanded .feedStoryPanel>small,.creatorFeed.expanded .feedAudienceCard>small,.creatorFeed.expanded .feedLibraryGroup header span,.creatorFeed.expanded .feedPinLabel{font-size:.76rem;letter-spacing:.16em}
+.creatorFeed.expanded .feedSectionHeader p{max-width:36ch;font-size:1rem;line-height:1.6}
+.creatorFeed.expanded .feedStoryCopy>p{font-size:clamp(1rem,1.15vw,1.1rem);line-height:1.7}
+.creatorFeed.expanded .feedFormats{gap:8px}
+.creatorFeed.expanded .feedFormats span{padding:9px 12px;font-size:.85rem}
+.creatorFeed.expanded .feedMicroMetrics{gap:8px}
+.creatorFeed.expanded .feedMicroMetrics span{gap:6px;padding:14px 12px;font-size:.74rem;letter-spacing:.06em}
+.creatorFeed.expanded .feedMicroMetrics b{font-size:clamp(1.6rem,2vw,1.9rem);letter-spacing:-.03em}
+.creatorFeed.expanded .feedLibraryGroup h3{font-size:clamp(1.4rem,1.8vw,1.7rem)}
+.creatorFeed.expanded .feedPostMeta strong{font-size:.95rem}
+.creatorFeed.expanded .feedPostMeta small{font-size:.78rem}
+.creatorFeed.expanded .feedPostMeta span{width:36px;height:36px;font-size:.85rem}
+.creatorFeed.expanded .feedBrandRail span{font-size:.74rem}
+.creatorFeed.expanded .feedServiceRow{grid-template-columns:36px 1fr auto;gap:14px;padding:18px 0}
+.creatorFeed.expanded .feedServiceRow>span{font-size:.78rem}
+.creatorFeed.expanded .feedServiceRow strong{font-size:clamp(1.05rem,1.2vw,1.2rem)}
+.creatorFeed.expanded .feedServiceRow small{color:#fff;font-size:.95rem;font-weight:750}
+.creatorFeed.expanded .feedIncludes span{padding:8px 11px;font-size:.78rem}
+.creatorFeed.expanded .feedAudienceHero span{max-width:14ch;font-size:.8rem}
+.creatorFeed.expanded .feedCountryList{gap:10px}
+.creatorFeed.expanded .feedCountryList p{font-size:.85rem}
+.creatorFeed.expanded .feedContact>p{font-size:clamp(1rem,1.1vw,1.1rem)}
+.creatorFeed.expanded .feedContactButton{gap:16px;padding:14px 20px;font-size:.95rem}
+.creatorFeed.expanded .feedContactButton span{width:36px;height:36px}
+.creatorFeed.expanded .feedContactLinks a{font-size:.85rem}
+.creatorFeed.expanded .feedFooter{font-size:.8rem}
+.creatorFeed.expanded .feedFooter strong{font-size:.9rem}
+
+/* Shared media overlays */
+.portfolioExperiencePage.expanded .experienceSocials a{width:36px;height:36px;font-size:.8rem}
+.portfolioExperiencePage.expanded .experiencePlaceholder span{font-size:.76rem;letter-spacing:.14em}
+.portfolioExperiencePage.expanded .experiencePlaceholder i{width:52px;height:52px;font-size:1rem}
+
+/* Éditorial Chic (campaignStories) */
+.portfolioExperiencePage.expanded .csNav nav a,.portfolioExperiencePage.expanded .csNav span{font-size:.88rem}
+.portfolioExperiencePage.expanded .csEdition,.portfolioExperiencePage.expanded .csSectionIntro>span,.portfolioExperiencePage.expanded .csServices>div>span,.portfolioExperiencePage.expanded .csContact>span,.portfolioExperiencePage.expanded .csBrands>span,.portfolioExperiencePage.expanded .csCaseNumber,.portfolioExperiencePage.expanded .csCaseCopy>small{font-size:.76rem;letter-spacing:.14em}
+.portfolioExperiencePage.expanded .csHeroMeta span{font-size:.76rem}
+.portfolioExperiencePage.expanded .csHeroMeta b{font-size:1.1rem}
+.portfolioExperiencePage.expanded .csPortrait>span{font-size:.76rem;padding:10px 12px}
+.portfolioExperiencePage.expanded .csSectionIntro p,.portfolioExperiencePage.expanded .csServices>div>p{font-size:clamp(1rem,1.1vw,1.1rem);line-height:1.65}
+.portfolioExperiencePage.expanded .csCaseCopy dt{font-size:.76rem;letter-spacing:.12em}
+.portfolioExperiencePage.expanded .csCaseCopy dd{font-size:1rem;line-height:1.6}
+.portfolioExperiencePage.expanded .csCaseCopy blockquote{font-size:clamp(1.15rem,1.4vw,1.35rem);line-height:1.5}
+.portfolioExperiencePage.expanded .csCaseCopy cite{font-size:.8rem}
+.portfolioExperiencePage.expanded .csServiceList span{font-size:.76rem}
+.portfolioExperiencePage.expanded .csServiceList strong{font-size:clamp(1.05rem,1.2vw,1.2rem)}
+.portfolioExperiencePage.expanded .csServiceList small{font-size:.95rem;font-weight:700}
+.portfolioExperiencePage.expanded .csContact>a{padding:14px 22px;font-size:.92rem}
+.portfolioExperiencePage.expanded .csContact>div a,.portfolioExperiencePage.expanded .csBrands small{font-size:.8rem}
+
+/* Scrapbook (personalScrapbook) */
+.portfolioExperiencePage.expanded .psNav nav a{font-size:.88rem}
+.portfolioExperiencePage.expanded .psHeroCopy>span,.portfolioExperiencePage.expanded .psWork>header>span,.portfolioExperiencePage.expanded .psNotes>div>span,.portfolioExperiencePage.expanded .psBrands>span,.portfolioExperiencePage.expanded .psContact>span,.portfolioExperiencePage.expanded .psDiary>div>small,.portfolioExperiencePage.expanded .psDiary>aside span,.portfolioExperiencePage.expanded .psNotes>aside small{font-size:.76rem;letter-spacing:.14em}
+.portfolioExperiencePage.expanded .psHeroCopy>p,.portfolioExperiencePage.expanded .psContact>p{font-size:clamp(1rem,1.1vw,1.1rem);line-height:1.6}
+.portfolioExperiencePage.expanded .psHeroCopy>div span,.portfolioExperiencePage.expanded .psFormats span,.portfolioExperiencePage.expanded .psNotes>div:first-child p{padding:8px 12px;font-size:.8rem}
+.portfolioExperiencePage.expanded .psDiary>aside small,.portfolioExperiencePage.expanded .psDiary>aside b{font-size:1rem}
+.portfolioExperiencePage.expanded .psProcess span{font-size:.9rem;line-height:1.5}
+.portfolioExperiencePage.expanded .psProcess b{font-size:.76rem}
+.portfolioExperiencePage.expanded .psPolaroid>span{font-size:1rem}
+.portfolioExperiencePage.expanded .psWall footer{font-size:.8rem}
+.portfolioExperiencePage.expanded .psNotes>aside span,.portfolioExperiencePage.expanded .psNotes>aside b{font-size:.8rem}
+.portfolioExperiencePage.expanded .psBrands small{font-size:.8rem}
+.portfolioExperiencePage.expanded .psContact>a{padding:14px 22px;font-size:.92rem}
+.portfolioExperiencePage.expanded .psContact>div a{font-size:.8rem}
+
+/* Showreel (showreelFirst) */
+.portfolioExperiencePage.expanded .srHero>header a{font-size:.88rem}
+.portfolioExperiencePage.expanded .srHero>header strong{font-size:1rem}
+.portfolioExperiencePage.expanded .srHeroCopy>span,.portfolioExperiencePage.expanded .srWork>header small,.portfolioExperiencePage.expanded .srServices>header small,.portfolioExperiencePage.expanded .srBrands>small,.portfolioExperiencePage.expanded .srContact>span,.portfolioExperiencePage.expanded .srCategoryTitle>span,.portfolioExperiencePage.expanded .srCategoryTitle small,.portfolioExperiencePage.expanded .srNow,.portfolioExperiencePage.expanded .srScroll{font-size:.76rem;letter-spacing:.16em}
+.portfolioExperiencePage.expanded .srHeroCopy p{font-size:clamp(1rem,1.1vw,1.1rem);line-height:1.6}
+.portfolioExperiencePage.expanded .srFloatingContact{padding:12px 16px 12px 18px;font-size:.8rem}
+.portfolioExperiencePage.expanded .srFloatingContact span{width:32px;height:32px}
+.portfolioExperiencePage.expanded .srTicker span{font-size:.9rem}
+.portfolioExperiencePage.expanded .srReelCard>span{width:32px;height:32px;font-size:.8rem}
+.portfolioExperiencePage.expanded .srReelCard>small{padding:7px 10px;font-size:.8rem}
+.portfolioExperiencePage.expanded .srProof span{font-size:.76rem;letter-spacing:.1em}
+.portfolioExperiencePage.expanded .srServices article span{font-size:.76rem}
+.portfolioExperiencePage.expanded .srServices article b{font-size:.95rem}
+.portfolioExperiencePage.expanded .srServices>p{font-size:.8rem;line-height:1.6}
+.portfolioExperiencePage.expanded .srContact footer{font-size:.8rem}
+
+/* Neo Brutal (talentProfile) */
+.portfolioExperiencePage.expanded .tpNav nav a,.portfolioExperiencePage.expanded .tpNavContact{font-size:.88rem}
+.portfolioExperiencePage.expanded .tpNav>a b{font-size:1rem}
+.portfolioExperiencePage.expanded .tpNav>a span,.portfolioExperiencePage.expanded .tpIntro>span,.portfolioExperiencePage.expanded .tpCapabilities header small,.portfolioExperiencePage.expanded .tpWork>header small,.portfolioExperiencePage.expanded .tpBrands>small,.portfolioExperiencePage.expanded .tpBrands span,.portfolioExperiencePage.expanded .tpFacts small,.portfolioExperiencePage.expanded .tpMetrics>div span,.portfolioExperiencePage.expanded .tpCapabilities article>span,.portfolioExperiencePage.expanded .tpWorkGroup>div span,.portfolioExperiencePage.expanded .tpRates>p,.portfolioExperiencePage.expanded .tpWorkGroup>section>div>small{font-size:.76rem;letter-spacing:.12em}
+.portfolioExperiencePage.expanded .tpBio,.portfolioExperiencePage.expanded .tpWork>header p{font-size:clamp(1rem,1.1vw,1.1rem);line-height:1.65}
+.portfolioExperiencePage.expanded .tpTags span{padding:8px 12px;font-size:.8rem}
+.portfolioExperiencePage.expanded .tpFacts b{font-size:1rem}
+.portfolioExperiencePage.expanded .tpMetrics>p{font-size:.8rem;line-height:1.55}
+.portfolioExperiencePage.expanded .tpCapabilities article strong{font-size:1.05rem}
+.portfolioExperiencePage.expanded .tpCapabilities article small{font-size:.8rem;line-height:1.5}
+.portfolioExperiencePage.expanded .tpRates span{font-size:.8rem}
+.portfolioExperiencePage.expanded .tpRates b{font-size:.95rem}
+.portfolioExperiencePage.expanded .tpSocial a,.portfolioExperiencePage.expanded .tpContact a{font-size:.92rem}
+.portfolioExperiencePage.expanded .tpFooter{font-size:.8rem}
+.portfolioExperiencePage.expanded .tpFooter b{font-size:.8rem}
+
+/* Postcard (postcardJournal) */
+.portfolioExperiencePage.expanded .pcNav nav{font-size:.88rem}
+.portfolioExperiencePage.expanded .pcNav>a span,.portfolioExperiencePage.expanded .pcHeroCopy>span,.portfolioExperiencePage.expanded .pcHeroPostcard:before,.portfolioExperiencePage.expanded .pcStamp,.portfolioExperiencePage.expanded .pcRoute span,.portfolioExperiencePage.expanded .pcIntro>span,.portfolioExperiencePage.expanded .pcIntro>small,.portfolioExperiencePage.expanded .pcStops>header span,.portfolioExperiencePage.expanded .pcPassport small,.portfolioExperiencePage.expanded .pcServices article span,.portfolioExperiencePage.expanded .pcProof small,.portfolioExperiencePage.expanded .pcBrands>span,.portfolioExperiencePage.expanded .pcContact>span,.portfolioExperiencePage.expanded .pcContact footer{font-size:.76rem;letter-spacing:.12em}
+.portfolioExperiencePage.expanded .pcHeroCopy>p,.portfolioExperiencePage.expanded .pcStops>header p,.portfolioExperiencePage.expanded .pcPassport>div:first-child p{font-size:clamp(1rem,1.1vw,1.1rem);line-height:1.6}
+.portfolioExperiencePage.expanded .pcHeroCopy>div b{font-size:.8rem}
+.portfolioExperiencePage.expanded .pcHeroPostcard>small{font-size:.95rem;line-height:1.4}
+.portfolioExperiencePage.expanded .pcWall article footer span{font-size:1rem}
+.portfolioExperiencePage.expanded .pcWall article footer b,.portfolioExperiencePage.expanded .pcBrands small,.portfolioExperiencePage.expanded .pcProof span{font-size:.8rem}
+.portfolioExperiencePage.expanded .pcServices article strong{font-size:1.05rem}
+.portfolioExperiencePage.expanded .pcServices article b{font-size:.95rem}
+.portfolioExperiencePage.expanded .pcContact>a{padding:14px 22px;font-size:.92rem}
