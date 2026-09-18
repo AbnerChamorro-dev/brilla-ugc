@@ -187,6 +187,21 @@
 .notificationFrequency { display: grid; gap: 6px; color: #777084; font-size: .52rem; font-weight: 750; }
 .notificationFrequency select { min-height: 40px; padding: 0 10px; border: 1px solid #dcd6ea; border-radius: 11px; color: #342e48; background: #fff; font-size: .6rem; font-weight: 750; }
 .notificationFrequency select:disabled { cursor: not-allowed; opacity: .52; }
+.versionHistory { margin-top: 18px; padding: 30px; border: 1px solid #ded8f0; border-radius: 28px; background: #fff; box-shadow: 0 22px 65px #3828720b; }
+.versionHistory > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.versionHistory > header span { color: var(--dashboard-accent); font-size: .62rem; font-weight: 900; letter-spacing: .15em; }
+.versionHistory h2 { margin: 10px 0 7px; font: 560 2.4rem/.95 var(--font-serif), serif; letter-spacing: -.05em; }
+.versionHistory header p { max-width: 650px; margin: 0; color: #817a92; font-size: .65rem; line-height: 1.55; }
+.versionHistory > header > small { flex: 0 0 auto; color: #8d859e; font-size: .53rem; font-weight: 900; letter-spacing: .12em; }
+.versionList { display: grid; gap: 8px; margin-top: 24px; }
+.versionList article { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 18px; padding: 14px 16px; border: 1px solid #e3deef; border-radius: 16px; background: #faf9ff; }
+.versionList article > div { display: grid; min-width: 0; gap: 4px; }
+.versionList strong { overflow: hidden; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.versionList small { overflow: hidden; color: #817a92; font-size: .53rem; text-overflow: ellipsis; white-space: nowrap; }
+.versionList article > span { padding: 6px 9px; border-radius: 999px; color: #5e5671; background: #ece8f6; font-size: .5rem; font-weight: 850; }
+.versionList button { padding: 9px 13px; border: 1px solid #d8d1e8; border-radius: 10px; color: #332b50; background: #fff; cursor: pointer; font-size: .56rem; font-weight: 850; }
+.versionList button:disabled { cursor: wait; opacity: .5; }
+.versionEmpty { margin: 22px 0 0; padding: 18px; border-radius: 16px; color: #746d86; background: #f5f2fb; font-size: .62rem; }
 .dashboardManagement { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-top: 18px; padding: 30px; border-radius: 26px; }
 .dashboardManagement h2 { margin: 9px 0 6px; font: 560 2rem var(--font-serif), serif; letter-spacing: -.045em; }
 .dashboardManagement p { margin: 0; color: #817a92; font-size: .65rem; }
@@ -276,6 +291,10 @@
   .analyticsCards { grid-template-columns: 1fr 1fr; }
   .notificationPreferences { padding: 18px; }
   .notificationControls { grid-template-columns: 1fr; }
+  .versionHistory { padding: 24px; }
+  .versionHistory > header { align-items: flex-start; flex-direction: column; }
+  .versionList article { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .versionList article > div { grid-column: 1 / -1; }
   .dashboardManagement { padding: 24px; }
   .managementActions { width: 100%; flex-direction: column; }
   .managementActions button { width: 100%; }

@@ -51,6 +51,16 @@ type CreatorPortfolio = {
   updated_at: string;
 };
 
+type PortfolioVersion = {
+  id: number;
+  content: PortfolioContent;
+  status: "draft" | "published" | "unpublished";
+  slug: string | null;
+  source_updated_at: string;
+  created_at: string;
+  reason: "baseline" | "interval" | "protective" | "status_change";
+};
+
 type PortfolioAnalytics = {
   total_views: number;
   unique_visitors: number;
@@ -64,7 +74,7 @@ type NotificationPreferences = {
   digest_frequency: "daily" | "weekly";
 };
 
-type ConfirmAction = "unpublish" | "delete" | null;
+type ConfirmAction = "unpublish" | "delete" | "restore" | null;
 
 const localPortfolioKeys = [
   "brilla-portfolio-draft-v2",
@@ -155,6 +165,8 @@ function clearLocalPortfolio(userId: string) {
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [portfolio, setPortfolio] = useState<CreatorPortfolio | null>(null);
+  const [portfolioVersions, setPortfolioVersions] = useState<PortfolioVersion[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<PortfolioVersion | null>(null);
   const [mediaCount, setMediaCount] = useState(0);
   const [analytics, setAnalytics] = useState<PortfolioAnalytics>(emptyAnalytics);
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>({ email_digest_enabled: false, digest_frequency: "weekly" });
@@ -194,10 +206,11 @@ export default function AccountPage() {
     }
     setPortfolio((portfolioResult.data as CreatorPortfolio | null) ?? null);
     setDashboardLoading(false);
-    const [mediaResult, analyticsResult, preferencesResult] = await Promise.all([
+    const [mediaResult, analyticsResult, preferencesResult, versionsResult] = await Promise.all([
       supabase.from("creator_media").select("id", { count: "exact", head: true }).eq("user_id", account.id),
       supabase.rpc("get_my_portfolio_analytics"),
       supabase.from("creator_notification_preferences").select("email_digest_enabled,digest_frequency").eq("user_id", account.id).maybeSingle(),
+      supabase.from("creator_portfolio_versions").select("id,content,status,slug,source_updated_at,created_at,reason").eq("user_id", account.id).order("created_at", { ascending: false }).limit(12),
     ]);
     if (dashboardAccountRef.current !== account.id) return;
     if (!mediaResult.error) setMediaCount(mediaResult.count ?? 0);
@@ -207,7 +220,8 @@ export default function AccountPage() {
       setNotificationPreferences(savedPreferences ?? { email_digest_enabled: false, digest_frequency: "weekly" });
       setNotificationPreferencesExist(Boolean(savedPreferences));
     }
-    if (mediaResult.error || analyticsResult.error || preferencesResult.error) {
+    if (!versionsResult.error) setPortfolioVersions((versionsResult.data as PortfolioVersion[] | null) ?? []);
+    if (mediaResult.error || analyticsResult.error || preferencesResult.error || versionsResult.error) {
       setError("Tu portafolio está disponible. Algunos datos del panel no pudieron actualizarse.");
     }
     setDashboardLoading(false);
@@ -230,6 +244,7 @@ export default function AccountPage() {
       setChecking(false);
       setLegalConsentRequired(false);
       setPortfolio(null);
+      setPortfolioVersions([]);
       setMediaCount(0);
       setAnalytics(emptyAnalytics);
       setNotificationPreferences({ email_digest_enabled: false, digest_frequency: "weekly" });
@@ -328,6 +343,7 @@ export default function AccountPage() {
     clearPendingLegalConsent();
     setUser(null);
     setPortfolio(null);
+    setPortfolioVersions([]);
     setMediaCount(0);
     setAnalytics(emptyAnalytics);
     setNotificationPreferences({ email_digest_enabled: false, digest_frequency: "weekly" });
@@ -457,6 +473,26 @@ export default function AccountPage() {
     setBusy(false);
   };
 
+  const restorePortfolioVersion = async () => {
+    if (!user || !selectedVersion) return;
+    setBusy(true);
+    setError("");
+    setSuccess("");
+    const { error: restoreError } = await getSupabaseBrowserClient().rpc("restore_my_portfolio_version", {
+      p_version_id: selectedVersion.id,
+    });
+
+    if (restoreError) {
+      setError("No pudimos restaurar esa versión. Tu portafolio actual no fue modificado.");
+    } else {
+      setConfirmAction(null);
+      setSelectedVersion(null);
+      setSuccess("La versión elegida quedó restaurada. La versión anterior también se guardó en el historial.");
+      await loadDashboard(user);
+    }
+    setBusy(false);
+  };
+
   if (checking) {
     return <main className="accountLoadingPage"><a className="accountBrand" href="/">brilla<span>•</span></a><div className="accountLoading"><i />Preparando tu espacio…</div></main>;
   }
@@ -566,6 +602,15 @@ export default function AccountPage() {
           </div>
         </section>
 
+        <section className="versionHistory" aria-labelledby="version-history-title">
+          <header><div><span><Icon glyph="↶" /> HISTORIAL PROTEGIDO</span><h2 id="version-history-title">Tus versiones recientes.</h2><p>Brilla conserva copias automáticas en la base de datos. Restaurar una copia también guarda primero el estado actual.</p></div><small>HASTA 200 VERSIONES</small></header>
+          {portfolioVersions.length ? <div className="versionList">{portfolioVersions.map((version) => <article key={version.id}>
+            <div><strong>{version.content.name || "Portafolio sin nombre"}</strong><small>{formattedDate(version.source_updated_at)} · {version.slug ? `/${version.slug}` : "sin enlace"}</small></div>
+            <span>{version.status === "published" ? "Publicado" : version.status === "unpublished" ? "Despublicado" : "Borrador"}</span>
+            <button type="button" disabled={busy} onClick={() => { setSelectedVersion(version); setConfirmAction("restore"); setError(""); setSuccess(""); }}>Restaurar</button>
+          </article>)}</div> : <p className="versionEmpty">La primera copia ya está protegida. Las versiones anteriores aparecerán aquí cuando hagas cambios.</p>}
+        </section>
+
         <section className="dashboardManagement">
           <div><span>ADMINISTRAR</span><h2>Tu portafolio, bajo tu control.</h2><p>Las acciones de esta sección modifican la versión guardada en Brilla.</p></div>
           <div className="managementActions">
@@ -578,12 +623,12 @@ export default function AccountPage() {
 
     {confirmAction && <div className="dashboardModal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setConfirmAction(null); }}><section role="dialog" aria-modal="true" aria-labelledby="dashboard-confirm-title">
       <button className="modalClose" type="button" aria-label="Cerrar" onClick={() => setConfirmAction(null)} disabled={busy}><Icon glyph="×" /></button>
-      <span className={confirmAction === "delete" ? "danger" : ""}>{confirmAction === "delete" ? "!" : "↙"}</span>
+      <span className={confirmAction === "delete" ? "danger" : ""}>{confirmAction === "delete" ? "!" : confirmAction === "restore" ? "↶" : "↙"}</span>
       <small>{confirmAction === "delete" ? "ACCIÓN PERMANENTE" : "CAMBIO REVERSIBLE"}</small>
-      <h2 id="dashboard-confirm-title">{confirmAction === "delete" ? "¿Eliminar tu portafolio?" : "¿Despublicar por ahora?"}</h2>
-      <p>{confirmAction === "delete" ? "Se eliminarán el portafolio, las fotos, los videos y las copias guardadas en este dispositivo. Tu cuenta de Google seguirá activa." : "El enlace dejará de funcionar para las marcas, pero conservarás toda la información y podrás publicarlo nuevamente."}</p>
+      <h2 id="dashboard-confirm-title">{confirmAction === "delete" ? "¿Eliminar tu portafolio?" : confirmAction === "restore" ? "¿Restaurar esta versión?" : "¿Despublicar por ahora?"}</h2>
+      <p>{confirmAction === "delete" ? "Se eliminarán el portafolio, las fotos, los videos y las copias guardadas en este dispositivo. Tu cuenta de Google seguirá activa." : confirmAction === "restore" ? `Volverás al contenido guardado el ${formattedDate(selectedVersion?.source_updated_at)}. Antes del cambio, Brilla conservará otra copia de tu versión actual.` : "El enlace dejará de funcionar para las marcas, pero conservarás toda la información y podrás publicarlo nuevamente."}</p>
       {confirmAction === "delete" && <label>Escribe <strong>ELIMINAR</strong> para confirmar<input value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value.toUpperCase())} autoComplete="off" /></label>}
-      <div><button type="button" onClick={() => setConfirmAction(null)} disabled={busy}>Cancelar</button><button className={confirmAction === "delete" ? "danger" : "confirm"} type="button" onClick={confirmAction === "delete" ? deletePortfolio : unpublishPortfolio} disabled={busy || (confirmAction === "delete" && deleteConfirmation !== "ELIMINAR")}>{busy ? "Procesando…" : confirmAction === "delete" ? "Eliminar definitivamente" : "Sí, despublicar"}</button></div>
+      <div><button type="button" onClick={() => { setConfirmAction(null); setSelectedVersion(null); }} disabled={busy}>Cancelar</button><button className={confirmAction === "delete" ? "danger" : "confirm"} type="button" onClick={confirmAction === "delete" ? deletePortfolio : confirmAction === "restore" ? restorePortfolioVersion : unpublishPortfolio} disabled={busy || (confirmAction === "delete" && deleteConfirmation !== "ELIMINAR")}>{busy ? "Procesando…" : confirmAction === "delete" ? "Eliminar definitivamente" : confirmAction === "restore" ? "Sí, restaurar" : "Sí, despublicar"}</button></div>
     </section></div>}
   </main>;
 }

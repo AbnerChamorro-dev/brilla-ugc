@@ -509,3 +509,26 @@ test("requires WhatsApp to publish and routes collaboration CTAs to it", async (
   assert.match(experiences, /className="feedNavCta" href=\{whatsappLink\(data\.whatsapp\)\}/);
   assert.match(experiences, /className="srFloatingContact" href=\{whatsappLink\(data\.whatsapp\)\}/);
 });
+
+test("keeps database portfolio history private and restorable", async () => {
+  const [account, migration] = await Promise.all([
+    readFile(new URL("../app/cuenta/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260918005308_add_portfolio_version_history.sql", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(migration, /create table public\.creator_portfolio_versions/i);
+  assert.match(migration, /on delete cascade/i);
+  assert.match(migration, /alter table public\.creator_portfolio_versions enable row level security/i);
+  assert.match(migration, /for select[\s\S]*to authenticated[\s\S]*auth\.uid\(\)[\s\S]*user_id/i);
+  assert.match(migration, /revoke all on table public\.creator_portfolio_versions from anon, authenticated/i);
+  assert.match(migration, /security definer[\s\S]*set search_path = ''/i);
+  assert.match(migration, /new_size < old_size \* 0\.65/i);
+  assert.match(migration, /interval '5 minutes'/i);
+  assert.match(migration, /offset 200/i);
+  assert.match(migration, /create or replace function public\.restore_my_portfolio_version/i);
+  assert.match(migration, /security invoker/i);
+  assert.match(migration, /versions\.user_id = \(select auth\.uid\(\)\)/i);
+  assert.match(account, /from\("creator_portfolio_versions"\)/);
+  assert.match(account, /rpc\("restore_my_portfolio_version"/);
+  assert.match(account, /La versión anterior también se guardó en el historial/);
+});
