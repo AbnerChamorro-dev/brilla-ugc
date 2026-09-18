@@ -12,6 +12,9 @@ export function enterMobileFullscreen(event: SyntheticEvent<HTMLVideoElement>) {
   const video = event.currentTarget as FullscreenVideo;
   if (typeof window === "undefined" || !window.matchMedia(mobileViewport).matches) return;
   if (document.fullscreenElement === video || video.webkitDisplayingFullscreen) return;
+  /* The play gesture is user-initiated, so browsers allow turning the sound on here. */
+  video.muted = false;
+  video.volume = 1;
 
   if (typeof video.webkitEnterFullscreen === "function") {
     video.addEventListener("webkitendfullscreen", () => video.pause(), { once: true });
