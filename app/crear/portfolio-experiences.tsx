@@ -2,6 +2,7 @@
 
 import { Icon } from "../components/brilla-icon";
 import { PhoneFrame } from "../components/phone-frame";
+import { enterMobileFullscreen } from "../components/mobile-fullscreen-video";
 
 
 /* User media uses local blob URLs and private signed URLs. */
@@ -67,7 +68,7 @@ function servicePrice(data: Portfolio, service: string) {
 
 function ExperienceMedia({ item, label, ambient = false, priority = false }: { item: Media | null; label: string; ambient?: boolean; priority?: boolean }) {
   const framed = item?.type === "video" && item.framed && !ambient;
-  const video = item?.type === "video" ? <video src={item.url} poster={item.previewUrl} muted playsInline controls={!ambient} autoPlay={ambient} loop={ambient} preload={ambient ? "auto" : "metadata"} aria-label={`Video UGC de ${label}`} /> : null;
+  const video = item?.type === "video" ? <video src={item.url} poster={item.previewUrl} muted playsInline controls={!ambient} autoPlay={ambient} loop={ambient} preload={ambient ? "auto" : "metadata"} onPlay={ambient ? undefined : enterMobileFullscreen} aria-label={`Video UGC de ${label}`} /> : null;
   return <div className={`experienceMedia ${item?.type === "video" ? "isVideo" : "isImage"} ${framed ? "isDeviceFramed" : ""}`}>
     {item ? item.type === "video"
       ? framed ? <PhoneFrame>{video}</PhoneFrame> : video
