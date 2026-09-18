@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "../components/brilla-icon";
+import { PhoneFrame } from "../components/phone-frame";
 
 
 /* User media uses local blob URLs and private signed URLs. */
@@ -65,9 +66,11 @@ function servicePrice(data: Portfolio, service: string) {
 }
 
 function ExperienceMedia({ item, label, ambient = false, priority = false }: { item: Media | null; label: string; ambient?: boolean; priority?: boolean }) {
-  return <div className={`experienceMedia ${item?.type === "video" ? "isVideo" : "isImage"}`}>
+  const framed = item?.type === "video" && item.framed && !ambient;
+  const video = item?.type === "video" ? <video src={item.url} poster={item.previewUrl} muted playsInline controls={!ambient} autoPlay={ambient} loop={ambient} preload={ambient ? "auto" : "metadata"} aria-label={`Video UGC de ${label}`} /> : null;
+  return <div className={`experienceMedia ${item?.type === "video" ? "isVideo" : "isImage"} ${framed ? "isFramed" : ""}`}>
     {item ? item.type === "video"
-      ? <video src={item.url} poster={item.previewUrl} muted playsInline controls={!ambient} autoPlay={ambient} loop={ambient} preload={ambient ? "auto" : "metadata"} aria-label={`Video UGC de ${label}`} />
+      ? framed ? <PhoneFrame>{video}</PhoneFrame> : video
       : <img src={item.url} alt={`Pieza UGC de ${label}`} loading={priority ? "eager" : "lazy"} />
       : <div className="experiencePlaceholder"><span>{label}</span><b>UGC</b><i><Icon glyph="▶" /></i></div>}
     {item && (item.instagram || item.tiktok) && <div className="experienceSocials">{item.instagram && <a href={item.instagram} target="_blank" rel="noreferrer" aria-label="Ver pieza en Instagram" data-analytics-target="instagram">IG</a>}{item.tiktok && <a href={item.tiktok} target="_blank" rel="noreferrer" aria-label="Ver pieza en TikTok" data-analytics-target="tiktok">TK</a>}</div>}

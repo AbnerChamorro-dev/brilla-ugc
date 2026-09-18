@@ -1,0 +1,7 @@
+/* Phone shell for framed videos. Screen insets are measured from public/phone-frame.png (341×550). */
+.phoneFrame{position:relative;height:100%;max-width:100%;aspect-ratio:341/550;margin:0 auto}
+.phoneFrameScreen{position:absolute;left:15.84%;right:15.84%;top:3.09%;bottom:5.45%;overflow:hidden;border-radius:9%/4.2%;background:#000}
+.phoneFrameScreen video,.phoneFrameScreen img{display:block;width:100%;height:100%;object-fit:cover;border-radius:0}
+.phoneFrameShell{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:contain;pointer-events:none;user-select:none;background:transparent}
+.deckMedia.phoneFramed,.experienceMedia.isFramed{border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
+.feedLibraryMedia:has(.isFramed),.feedPinnedMedia:has(.isFramed),.srReelCard:has(.isFramed){background:transparent}
