@@ -87,12 +87,12 @@ test("keeps the published creator feed readable without changing saved portfolio
     readFile(new URL("../app/[slug]/public-portfolio.css", import.meta.url), "utf8"),
   ]);
 
-  assert.match(experiences, /function heroSummary/);
   assert.match(experiences, /function displayMetric/);
   assert.match(experiences, /function displayPrice/);
-  assert.match(experiences, /function displayBrandName/);
   assert.match(experiences, /const primaryTarget = work\.length > 0 \? "#feed-work" : data\.services\.length > 0 \? "#feed-services" : "#feed-story"/);
-  assert.match(experiences, /<p className="feedHeroLead">\{heroSummary\(data\.bio\)\}<\/p>/);
+  assert.match(experiences, /<p className="feedHeroLead">\{data\.bio\}<\/p>/);
+  assert.match(experiences, /alt=\{portfolioText\(data, "Logo de marca colaboradora", "Collaborating brand logo"\)\}/);
+  assert.doesNotMatch(experiences, /feedBrandRail[\s\S]{0,500}<span>\{brand\.name\}<\/span>/);
   assert.match(experiences, /displayAvailability\(data\)/);
   assert.match(feedStyles, /Published feed portfolios use readable fixed type sizes/);
   assert.match(feedStyles, /grid-template-areas:"identity cta" "nav nav"/);
