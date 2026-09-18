@@ -80,6 +80,27 @@ test("offers six narrative UGC portfolio experiences wired to the editor", async
   assert.match(additions, /\.postcardJournal/);
 });
 
+test("keeps the published creator feed readable without changing saved portfolio data", async () => {
+  const [experiences, feedStyles, publicStyles] = await Promise.all([
+    readFile(new URL("../app/crear/portfolio-experiences.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/crear/creator-feed.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/[slug]/public-portfolio.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(experiences, /function heroSummary/);
+  assert.match(experiences, /function displayMetric/);
+  assert.match(experiences, /function displayPrice/);
+  assert.match(experiences, /function displayBrandName/);
+  assert.match(experiences, /const primaryTarget = work\.length > 0 \? "#feed-work" : data\.services\.length > 0 \? "#feed-services" : "#feed-story"/);
+  assert.match(experiences, /<p className="feedHeroLead">\{heroSummary\(data\.bio\)\}<\/p>/);
+  assert.match(experiences, /displayAvailability\(data\)/);
+  assert.match(feedStyles, /Published feed portfolios use readable fixed type sizes/);
+  assert.match(feedStyles, /grid-template-areas:"identity cta" "nav nav"/);
+  assert.match(feedStyles, /\.creatorFeed\.expanded \.feedNav nav\{grid-area:nav;display:flex/);
+  assert.match(publicStyles, /\.publicPortfolioPage\{padding-bottom:52px\}/);
+  assert.match(publicStyles, /\.publicBrillaBadge\{position:absolute/);
+});
+
 test("turns the mobile editor into an app-like wizard with a preview sheet", async () => {
   const [editor, styles] = await Promise.all([
     readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8"),
