@@ -336,7 +336,7 @@ export const templateSchemas: Record<string, TemplateSchema> = {
   whimsy: { id: "whimsy", format: "presentation", categoryLimit: 4, photoLimit: 4, portrait: true, contactVisual: true, label: "hasta 4 piezas por categoría" },
   sage: { id: "sage", format: "presentation", categoryLimit: 5, photoLimit: 5, portrait: true, contactVisual: true, label: "hasta 5 piezas por categoría" },
   muse: { id: "muse", format: "website", categoryLimit: 4, photoLimit: 4, portrait: true, contactVisual: false, label: "hasta 4 piezas por categoría" },
-  creator: { id: "creator", format: "website", categoryLimit: 6, photoLimit: 6, portrait: true, contactVisual: false, label: "hasta 6 piezas por categoría" },
+  creator: { id: "creator", format: "website", categoryLimit: 12, photoLimit: 12, portrait: true, contactVisual: false, label: "hasta 12 piezas por categoría" },
   aura: { id: "aura", format: "website", categoryLimit: 4, photoLimit: 4, portrait: true, contactVisual: false, label: "hasta 4 piezas por categoría" },
   noir: { id: "noir", format: "website", categoryLimit: 5, photoLimit: 5, portrait: true, contactVisual: false, label: "hasta 5 piezas por categoría" },
   sorbet: { id: "sorbet", format: "website", categoryLimit: 5, photoLimit: 5, portrait: true, contactVisual: false, label: "hasta 5 piezas por categoría" },
@@ -447,7 +447,7 @@ function PortfolioEditor() {
       const websiteTargets = [
         ".siteHero,.feedHero,.csHero,.psHero,.srHero,.tpHero,.pcHero",
         ".siteHero,.feedHero,.csHero,.psDiary,.srHero,.tpHero,.pcIntro",
-        ".siteWork,.feedPinned,.csCases,.psWork,.srWork,.tpWork,.pcStops",
+        ".siteWork,.feedLibrary,.csCases,.psWork,.srWork,.tpWork,.pcStops",
         ".webAudience,.feedCollab,.csServices,.psNotes,.srProof,.tpCommercial,.pcProof",
         ".webRates,.webServices,.feedCollab,.csServices,.psNotes,.srServices,.tpCommercial,.pcPassport",
         ".webContact,.feedContact,.csContact,.psContact,.srContact,.tpContact,.pcContact",
