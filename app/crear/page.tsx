@@ -294,7 +294,7 @@ const steps = [
   ["Publicar", "Comparte tu portafolio", "Elige tu enlace, revisa el resultado y publícalo."],
 ];
 const categories = ["Campañas", "Cabello", "Beauty", "Familia", "Empresas", "Lugares", "Fotografía"];
-const nicheOptions = ["Beauty", "Lifestyle", "Fashion", "Food", "Travel", "Fitness", "Tech", "Wellness", "Maternidad", "Hogar"];
+const nicheOptions = ["Beauty", "Lifestyle", "Fashion", "Food", "Travel", "Fitness", "Tech", "Wellness", "Maternidad", "Hogar", "Canva"];
 const serviceOptions = ["Video UGC", "Fotografía UGC", "Reel colaborativo", "Historias", "Voice over", "Ads para redes", "Derechos de pauta"];
 const contentOptions = ["Unboxings", "Vlogs", "ASMR", "Trends", "Testimonios", "Tutoriales", "Reseñas", "Storytelling"];
 const includeOptions = ["Concepto creativo", "Guion estratégico", "Grabación", "Edición", "Formato vertical", "Subtítulos", "CTA", "Entrega de brutos"];

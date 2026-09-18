@@ -110,6 +110,7 @@ test("starts the generation form empty and uses examples only as placeholders", 
   assert.match(editor, /followers: "", monthlyViews: "", womenAudience: "", topCountries: ""/);
   assert.doesNotMatch(editor, /Sofía Mendoza|sofia\.crea|sofiaugc|sofia-mendoza/i);
   assert.doesNotMatch(editor, /Conectar redes|Conecta tus métricas/i);
+  assert.match(editor, /const nicheOptions = \[[^\]]*"Canva"/);
   assert.match(editor, /placeholder="tu-nombre"/);
   assert.match(editor, /placeholder="Ej\. 50\.5 mil"/);
 });
