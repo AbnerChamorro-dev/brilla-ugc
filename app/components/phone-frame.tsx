@@ -8,8 +8,8 @@ import "./phone-frame.css";
 
 /* Realistic iPhone shell: the screen cut-out matches the transparent area of /phone-frame.png. */
 export function PhoneFrame({ children }: { children: ReactNode }) {
-  return <div className="phoneFrame">
-    <div className="phoneFrameScreen">{children}</div>
-    <img className="phoneFrameShell" src="/phone-frame.png" alt="" aria-hidden draggable={false} />
+  return <div className="deviceShell">
+    <div className="deviceShellScreen">{children}</div>
+    <img className="deviceShellImg" src="/phone-frame.png" alt="" aria-hidden draggable={false} />
   </div>;
 }

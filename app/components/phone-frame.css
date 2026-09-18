@@ -1,8 +1,8 @@
 /* Phone shell for framed videos. Screen insets are measured from public/phone-frame.png (341×550). */
 /* Selectors are doubled so they beat the templates' generic `.experienceMedia img` / `.deckMedia video` rules. */
-.phoneFrame.phoneFrame{position:absolute;top:0;bottom:0;left:50%;height:100%;width:auto;max-width:100%;aspect-ratio:341/550;margin:0;transform:translateX(-50%)}
-.phoneFrame .phoneFrameScreen{position:absolute;left:15.84%;right:15.84%;top:3.09%;bottom:5.45%;overflow:hidden;border-radius:9%/4.2%;background:transparent}
-.phoneFrame .phoneFrameScreen video,.phoneFrame .phoneFrameScreen img{display:block;width:100%;height:100%;object-fit:cover;border-radius:0}
-.phoneFrame .phoneFrameShell{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:contain;border:0;border-radius:0;box-shadow:none;background:transparent;pointer-events:none;user-select:none}
-.deckMedia.phoneFramed,.experienceMedia.isFramed{position:relative;border:0;border-radius:0;background:transparent;box-shadow:none}
-.feedLibraryMedia:has(.isFramed),.feedPinnedMedia:has(.isFramed),.srReelCard:has(.isFramed){background:transparent}
+.deviceShell.deviceShell{position:absolute;top:0;bottom:0;left:50%;height:100%;width:auto;max-width:100%;aspect-ratio:341/550;margin:0;transform:translateX(-50%)}
+.deviceShell .deviceShellScreen{position:absolute;left:15.84%;right:15.84%;top:3.09%;bottom:5.45%;overflow:hidden;border-radius:9%/4.2%;background:transparent}
+.deviceShell .deviceShellScreen video,.deviceShell .deviceShellScreen img{display:block;width:100%;height:100%;object-fit:cover;border-radius:0}
+.deviceShell .deviceShellImg{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:contain;border:0;border-radius:0;box-shadow:none;background:transparent;pointer-events:none;user-select:none}
+.deckMedia.deviceFramed,.experienceMedia.isDeviceFramed{position:relative;border:0;border-radius:0;background:transparent;box-shadow:none}
+.feedLibraryMedia:has(.isDeviceFramed),.feedPinnedMedia:has(.isDeviceFramed),.srReelCard:has(.isDeviceFramed){background:transparent}

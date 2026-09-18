@@ -68,7 +68,7 @@ function servicePrice(data: Portfolio, service: string) {
 function ExperienceMedia({ item, label, ambient = false, priority = false }: { item: Media | null; label: string; ambient?: boolean; priority?: boolean }) {
   const framed = item?.type === "video" && item.framed && !ambient;
   const video = item?.type === "video" ? <video src={item.url} poster={item.previewUrl} muted playsInline controls={!ambient} autoPlay={ambient} loop={ambient} preload={ambient ? "auto" : "metadata"} aria-label={`Video UGC de ${label}`} /> : null;
-  return <div className={`experienceMedia ${item?.type === "video" ? "isVideo" : "isImage"} ${framed ? "isFramed" : ""}`}>
+  return <div className={`experienceMedia ${item?.type === "video" ? "isVideo" : "isImage"} ${framed ? "isDeviceFramed" : ""}`}>
     {item ? item.type === "video"
       ? framed ? <PhoneFrame>{video}</PhoneFrame> : video
       : <img src={item.url} alt={`Pieza UGC de ${label}`} loading={priority ? "eager" : "lazy"} />
