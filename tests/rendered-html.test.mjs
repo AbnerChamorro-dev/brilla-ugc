@@ -122,6 +122,26 @@ test("turns the mobile editor into an app-like wizard with a preview sheet", asy
   assert.match(styles, /\.mobileStepNav button\.visited/);
 });
 
+test("gives every published portfolio one mobile app shell and information model", async () => {
+  const [client, styles, layout, manifest] = await Promise.all([
+    readFile(new URL("../app/[slug]/public-portfolio-client.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/[slug]/public-portfolio.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../public/manifest.webmanifest", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(client, /className="portfolioAppDock"/);
+  assert.match(client, /PortfolioInformationSheet/);
+  assert.match(client, /SERVICIOS Y FORMATOS/);
+  assert.match(client, /AUDIENCIA/);
+  assert.match(client, /TARIFAS/);
+  assert.match(styles, /env\(safe-area-inset-bottom\)/);
+  assert.match(styles, /\.portfolioDeck\.expanded \.deckSlide/);
+  assert.match(styles, /\.showreelFirst\.expanded \.srHeroCopy h1/);
+  assert.match(layout, /manifest: "\/manifest\.webmanifest"/);
+  assert.equal(JSON.parse(manifest).display, "standalone");
+});
+
 test("starts the generation form empty and uses examples only as placeholders", async () => {
   const editor = await readFile(new URL("../app/crear/page.tsx", import.meta.url), "utf8");
 

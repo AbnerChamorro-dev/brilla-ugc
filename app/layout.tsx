@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Caveat, DM_Sans, Fraunces, Space_Grotesk } from "next/font/google";
 import { headers } from "next/headers";
 import { AuthRedirectHandler } from "./components/auth-redirect-handler";
@@ -20,6 +20,8 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(origin),
     title: "Brilla — Portafolios para creadoras UGC",
     description: "Crea gratis en 2 minutos un portafolio UGC responsivo con video, métricas, enlace profesional y PDF.",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Brilla UGC" },
     icons: {
       icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
       shortcut: "/favicon.svg",
@@ -37,6 +39,13 @@ export async function generateMetadata(): Promise<Metadata> {
     },
   };
 }
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#17132f",
+};
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

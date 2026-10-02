@@ -1,0 +1,17 @@
+{
+  "name": "Brilla UGC",
+  "short_name": "Brilla",
+  "description": "Portafolios profesionales para creadoras UGC.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#17132f",
+  "theme_color": "#17132f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
